@@ -16,9 +16,42 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r, eval=FALSE, echo=FALSE}
 transactions = read.csv2("HA1_Markt1/output_transactions_8Players_v0020.csv")
 
-transactions
+summary(transactions)
+
+```
+
+```{r, eval=FALSE, echo=FALSE}
+services = read.csv2("HA1_Markt1/output_services_8Players_v0020.csv")
+
+cat("Summary of table 'Services':", "\n\n")
+summary(services)
+
+```
+
+```{r, eval=FALSE, echo=FALSE}
+costs = read.csv2("HA1_Markt1/output_cost_8Players_v0020.csv")
+
+cat("Summary of table 'Costs':", "\n\n")
+summary(costs)
+
+```
+
+```{r, eval=FALSE, echo=FALSE}
+prices = read.csv2("HA1_Markt1/output_prices_8Players_v0020.csv")
+
+cat("Summary of table 'Prices':", "\n\n")
+summary(prices)
+
 ```
 ### Aufgabe 2
+```{r, eval=FALSE, echo=FALSE}
+# Transactions
+# Remove 2023 data (data types are already suitable)
+transactions = transactions[transactions$Year <= 2022 & transactions$Year >= 2018,]
+summary(transactions)
+
+# No action necessary for others
+```
 
 ### Aufgabe 3
 
