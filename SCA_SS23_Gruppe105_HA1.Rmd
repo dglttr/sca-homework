@@ -1,0 +1,58 @@
+---
+title: "SCA_SS23_Gruppe105_HA1"
+output: html_document
+date: "2023-05-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Teil 1: Datenanalyse
+
+## Übersicht
+
+### Aufgabe 1
+```{r, eval=FALSE, echo=FALSE}
+read.csv2("output_transactions_8Players_v0020.csv")
+```
+### Aufgabe 2
+
+### Aufgabe 3
+
+### Aufgabe 4
+
+### Aufgabe 5
+
+## Marktübersicht
+### Aufgabe 6
+
+### Aufgabe 7
+
+### Aufgabe 8
+
+### Aufgabe 9
+
+## Umsatz, Kosten und Profit
+### Aufgabe 10
+
+### Aufgabe 11
+
+### Aufgabe 12
+
+### Aufgabe 13
+
+## Bewertung der Logistikdienstleister
+### Aufgabe 14
+
+### Aufgabe 15
+
+### Aufgabe 16
+
+### Aufgabe 17
+
+# Teil 2: Projektbeschreibung
+
+
+
+
