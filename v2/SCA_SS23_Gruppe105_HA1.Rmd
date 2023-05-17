@@ -141,11 +141,10 @@ regions_summary
 ```
 
 ```{r}
-min(regions_summary$`Avg Sales per Supermarket`)/max(regions_summary$`Avg Sales per Supermarket`)
+cat("Der Unterschied zwischen der absatzstärksten und absatzschwächsten Region beträgt",
+round(1 - min(regions_summary$`Avg Sales per Supermarket`)/max(regions_summary$`Avg Sales per Supermarket`), 3)*100, "%."
+)
 ```
-
-Es besteht 65,42% Unterschied zwischen der absatzstärksten und der absatzschwächsten Region.
-
 
 ## Aufgabe 8
 
