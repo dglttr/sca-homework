@@ -45,26 +45,26 @@ summary(transactions)
 
 
 ```{r}
-library(lubridate)
-cost$Date <- make_date(cost$Year, cost$Month)
-cost <- subset(cost, select=-c(Year, Month))
+# Convert Day, Month, Year to factors (categorical data)
+transactions$Day <- as.factor(transactions$Day)
+transactions$Month <- as.factor(transactions$Month)
+transactions$Year <- as.factor(transactions$Year)
 
-services$Date <- make_date(services$Year, services$Month, services$Day)
-services <- subset(services, select=-c(Year, Month, Day))
+services$Day <- as.factor(services$Day)
+services$Month <- as.factor(services$Month)
+services$Year <- as.factor(services$Year)
 
-transactions$Date <- make_date(transactions$Year, transactions$Month, transactions$Day)
-transactions <- subset(transactions, select=-c(Year, Month, Day))
+cost$Month <- as.factor(cost$Month)
+cost$Year <- as.factor(cost$Year)
 ```
 
 ```{r}
-year18_22 <- interval(ymd("2018-01-01"), ymd("2022-12-31"))
+# Filter data outside of 2018-2022
+cost18_22 <- cost[cost$Year <= 2022 & cost$Year >= 2018, ]
+services18_22 <- services[services$Year <= 2022 & services$Year >= 2018, ]
+transactions18_22 <- transactions[transactions$Year <= 2022 & transactions$Year >= 2018, ]
 
-cost18_22 <- cost[cost$Date %within% year18_22, ]
-services18_22 <- services[services$Date %within% year18_22, ]
-transactions18_22 <- transactions[transactions$Date %within% year18_22, ]
 ```
-
-
 
 ```{r}
 summary(cost18_22)
@@ -73,6 +73,7 @@ summary(cost18_22)
 ```{r}
 summary(services18_22)
 ```
+
 ```{r}
 summary(prices)
 ```
