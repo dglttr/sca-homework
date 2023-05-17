@@ -134,15 +134,14 @@ regions_105 <- subset(transactions18_22, Product == 'Gruppe105',select = c('regi
 regions_summary <- aggregate(regions_105$Sales, by=list(regions_105$region), FUN=sum)
 colnames(regions_summary) <- c('Region', 'Total sales')
 
+regions_summary$`Avg Sales per Supermarket` <- regions_summary$`Total sales`/5
+
+regions_summary
+
 ```
 
 ```{r}
-regions_summary$supermrkt_average <- regions_summary$`Total sales`/5
-```
-
-
-```{r}
-min(regions_summary$supermrkt_average)/max(regions_summary$supermrkt_average)
+min(regions_summary$`Avg Sales per Supermarket`)/max(regions_summary$`Avg Sales per Supermarket`)
 ```
 
 Es besteht 65,42% Unterschied zwischen der absatzstärksten und der absatzschwächsten Region.
