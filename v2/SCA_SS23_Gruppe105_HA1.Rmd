@@ -1,6 +1,6 @@
 ---
 title: "SCA_SS23_Gruppe105_HA1"
-author: "Cordelia Mena Hernandez, Daniel Glatter"
+author: "Cordelia Mena Hernandez"
 date: "2023-05-09"
 output: pdf_document
 ---
@@ -10,7 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 ```
 
-# Übersicht
+
 
 ## Aufgabe 1
 
@@ -41,7 +41,7 @@ summary(transactions)
 ```
 
 
-## Aufgabe 2
+### Aufgabe 2
 
 
 ```{r}
@@ -105,9 +105,9 @@ supermarkets <- subset(supermarkets, region %in% c('Shangh','Peking', 'Skorea'))
 
 print(supermarkets)
 ```
-# Marktübersicht
+### Marktübersicht
 
-## Aufgabe 6
+## Augabe 6
 
 ```{r}
 totalsales <- aggregate(transactions18_22$Sales, by=list(transactions18_22$Product), FUN=sum)
@@ -169,8 +169,6 @@ monthlymean_sales <- transactions18_22 %>% filter(Product == 'Gruppe105') %>% gr
 monthlymean_sales[which.max(monthlymean_sales$mean_sales),]
 ```
 Der Monat mit den höchsten durchschnittlichen Absatz von 18 Stück ist Oktober 2019.
-
-# Umsatz, Kosten und Profit
 
 ## Aufgabe 10
 ```{r}
@@ -255,8 +253,6 @@ real_unitcost/0.6-1
 
 ```
 Die Kosten für die tatsaechliche Lagerleistung beträgt 1,57 Geldeinheiten pro Stück. Das ist 162,32% mehr als die 0,6 Geldeinheiten pro Stück, die vereinbart waren.
-
-# Bewertung der Logistikdienstleister
 
 ## Aufgabe 14
 
