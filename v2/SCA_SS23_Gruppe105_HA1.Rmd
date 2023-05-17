@@ -174,19 +174,19 @@ Der Monat mit den höchsten durchschnittlichen Absatz von 18 Stück ist Oktober 
 revenue_105 <- totalsales_105*3.9
 revenue_105
 ```
-
+Der Gesamtumsatz im Zeitraum 2018-2022 beträgt ca. 2.41 Millionen Geldeinheiten.
 
 ```{r}
 totalcost_105 <- sum(cost18_22[cost18_22$Product =="Gruppe105",2])
 print(totalcost_105)
 ```
-
-Die Gesamtkosten betragen 1946187 Eur.
+Die Gesamtkosten im Zeitraum 2018-2022 betragen ca. 1.95 Millionen Geldeinheiten.
 
 ```{r}
 profit_105 <- revenue_105 - totalcost_105
 profit_105
 ```
+Der Gesamtprofit im Zeitraum 2018-2022 beträgt ca. 468 Tausend Geldeinheiten.
 
 ## Aufgabe 11
 
@@ -204,54 +204,65 @@ cost_data105 <- aggregate(cost_data105$Amount, by=list(floor_date(cost_data105$D
 profit_data105 <- merge(x = rev_data105, y = cost_data105, by = "Group.1", all = TRUE)
 colnames(profit_data105) <- c('Date', 'Revenue', 'Cost')
 profit_data105$Profit <- profit_data105$Revenue - profit_data105$Cost
+
+# Nur Jahr 2020 anschauen
+profit_data105 <- profit_data105[year(profit_data105$Date) == 2020,]
 ```
 
 ```{r}
 library(ggplot2)
 ggplot(data=profit_data105, aes(x=Date, y=Profit)) +
-  geom_line(color="blue")+
+  geom_line(color="black")+
   geom_point()+
   geom_point(data = profit_data105[which.min(profit_data105$Profit), ], color="red", size=2) +
-  geom_point(data = profit_data105[which.max(profit_data105$Profit), ], color="orange", size=2)+
+  geom_point(data = profit_data105[which.max(profit_data105$Profit), ], color="green", size=2)+
   scale_x_date(date_labels = "%Y %b")+
-  scale_x_date(date_breaks = "3 month", date_labels = "%b %Y")+
+  scale_x_date(date_breaks = "1 month", date_labels = "%b %Y")+
   theme(axis.text.x=element_text(angle=60, hjust=1))
 ```
-Mai 2019 erweist den kleinsten Profit und Januar 2018 den größten.
+Im Mai 2020 wird der kleinste, im November 2020 der größte Profit erzielt.
 
 ## Aufgabe 12
 
 ```{r}
-shipping_data105 <- services18_22[, c("region", "Product", "DaysScheduled", "DaysExecuted","cost")]
-shipping_data105 <- subset(shipping_data105, Product %in% c('Gruppe105'))
+shipping_data105 <- services18_22 %>% filter(Product=="Gruppe105", service=="Shipping")
 
-shipping_data105$late <- ifelse(shipping_data105$DaysExecuted > shipping_data105$DaysScheduled, TRUE, FALSE)
+shipping_data105$late <- ifelse(shipping_data105$DaysExecuted > shipping_data105$DaysScheduled, "Verspätet", "Pünktlich")
 
 shipping_byregion <- summarise(group_by(shipping_data105, region, late), total_cost=sum(cost))
 
-```
-
-
-```{r}
-
 library(scales)
 ggplot(data=shipping_byregion, aes(x=region, y=total_cost, fill=late)) +
-  geom_col()+
+  geom_bar(position="dodge", stat="identity")+
   xlab("Region") + 
-  ylab("Cost")+
-  scale_y_continuous(labels = unit_format(unit = "K", scale = 1e-3))
+  ylab("Kosten Transportdiensleistungen")+
+  scale_y_continuous(labels = unit_format(unit = "k", scale = 1e-3)) +
+  theme(legend.title=element_blank()) +
+  scale_fill_manual(values=c("darkgreen", "red"))
 
 ```
+
+Die Transportausgaben (Shipping expenses) liegen in allen Regionen für verspätete Transporte höher als für pünktliche.
+Für die Region Philippinen sind nicht nur die Gesamtausgaben für Transporte am höchsten, sondern insbesondere auch für verspätete Transporte. Bei den pünktlichen Transporten liegt die Region Südkorea knapp vorne.
 
 ## Aufgabe 13
 
 ```{r}
 warehouse_data <- services18_22 %>% filter(Product=="Gruppe105", service=="Warehousing" ) %>% summarise(sum_scheduled= sum(QScheduled), sum_exec=sum(QExecuted), sum_cost=sum(cost))
+
+# Cost/ Executed Quantity
 real_unitcost <- warehouse_data$sum_cost/warehouse_data$sum_exec
-real_unitcost/0.6-1
+real_unitcost
+
+# Cost/Scheduled Quantity
+scheduled_unitcost <- warehouse_data$sum_cost / warehouse_data$sum_scheduled
+scheduled_unitcost
+
+# Comparison
+real_unitcost / scheduled_unitcost - 1
 
 ```
-Die Kosten für die tatsaechliche Lagerleistung beträgt 1,57 Geldeinheiten pro Stück. Das ist 162,32% mehr als die 0,6 Geldeinheiten pro Stück, die vereinbart waren.
+Die Kosten für die tatsächliche Lagerleistung betragen 1,57 Geldeinheiten pro Stück, die für die geplante Lagerleistung nur 1,30 Geldeinheiten pro Stück. Damit haben wir ca. 21 % mehr gezahlt.
 
 ## Aufgabe 14
 
