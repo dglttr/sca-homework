@@ -330,3 +330,38 @@ ggplot(data=shipping_lateregion, aes(x=vendor, y=grade, fill=vendor)) +
   scale_y_continuous(labels = unit_format(unit = "%", scale = 1e2))
 ```
 
+# Projektbeschreibung
+Kurze Einleitung
+- Analyseprojekt, das systematisch Mehrwert generieren soll
+
+## Projektdurchführung
+Plan für Durchführung/Vorgehensweise (Projektabschnitte)
+- CRISP-DM
+1. Problemidentifizierung
+2. Datenbeschaffung
+3. Datenaufbereitung
+4. Ausführen der Analyse
+5. Bewertung der Ergebnisse
+6. Bereitstellung und Nutzengenerierung
+
+## Datenquellen
+- Unternehmensinternes ERP-System, beispielsweise folgende SAP-Module:
+  - Sales & Distribution (SD): Für Vertriebsdaten
+  - Finance (FI): Für Kosten und Zahlungsverlauf mit Dienstleistern
+- Externe Datenbanken:
+  - Tagesaktuelle Spotmarket-Preise für Logistikdienstleistungen
+  - Informationen zum Gesamtmarkt (z. B. insgesamt verkaufte Limonaden in Supermärkten, über alle Anbieter hinweg) in den gegebenen Regionen
+
+## Nutzer:innen
+- High-Level Erkenntnisse für CSCO (Chief Supply Chain Officer) oder ähnlich
+- Zeitnahe, relevante Ergebnisse für Angestellte, die mit LDL zusammenarbeiten/ diese beauftragen
+
+## Empfehlungen basierend auf Teil 2.1
+- Vorschläge zu Verträgen mit bestimmten LDL
+Vorab: Weitere Analysen nötig. Z.B. schauen, ob bestimmte LDL besonders in bestimmten Regionen agieren (z. B. Bange+Hammer Shipping).
+
+- Shipping-Dienstleister:
+  - Verträge mit Bange+Hammer priorisieren
+- Warehousing-Dienstleister:
+  - Kein akuter Handlungszwang
+  - Nach Möglichkeit Verträge mit Flying Mercury Warehousing ausweiten
