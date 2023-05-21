@@ -110,20 +110,22 @@ print(supermarkets)
 
 ```{r}
 totalsales <- aggregate(transactions18_22$Sales, by=list(transactions18_22$Product), FUN=sum)
+colnames(totalsales) <- c("Group", "Total Sales")
 print(totalsales)
 ```
 
 ```{r}
 totalsales_105 <- sum(transactions18_22[transactions18_22$Product =="Gruppe105",4])
-print(totalsales_105)
+
+cat("Insgesamt wurden", totalsales_105, "Flaschen Limonade von Gruppe 105 verkauft.\n")
 ```
 
 ```{r}
-total_marketsales <-sum(totalsales[totalsales$Group.1 != "Lost Sales",2])
+total_marketsales <-sum(totalsales[totalsales$Group != "Lost Sales",2])
 marketshare <- totalsales_105/total_marketsales
-print(marketshare)
+
+cat("Bei Betrachtung der tatsächlich verkauften Menge (ohne Lost Sales) ergibt sich ein (gerundeter) Marktanteil von", round(marketshare, digits = 3)*100, "%.")
 ```
- Das verkaufte Produkt Gruppe105 hat 12,41% der gesamten Marktanteils
  
 ## Aufgabe 7
 ```{r}
