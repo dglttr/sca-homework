@@ -238,7 +238,7 @@ ggplot(data=shipping_byregion, aes(x=region, y=total_cost, fill=late)) +
   ylab("Kosten Transportdiensleistungen")+
   scale_y_continuous(labels = unit_format(unit = "k", scale = 1e-3)) +
   theme(legend.title=element_blank()) +
-  scale_fill_manual(values=c("darkgreen", "red"))
+  scale_fill_manual(values=c("darkolivegreen3", "brown1"))
 
 ```
 
