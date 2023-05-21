@@ -270,71 +270,104 @@ Die Kosten für die tatsächliche Lagerleistung betragen 1,57 Geldeinheiten pro 
 
 ## Aufgabe 14
 
+Wir verwenden das Produkt von On-Time Delivery (OTD) und In-Full Rate (IFR) zur Bewertung der Transportdiensleister.
+$$
+KPI = IFR * OTD = \frac{\#\ of\ orders\ delivered\ complete}{\#\ of\ customer\ orders} * \frac{\#\ of\ orders\ delivered\ on\ or\ before\ due\ date}{\#\ of\ customer\ orders}
+$$
+Beide zusammengenommen beschreiben, wie gut wir in der Lage sind, Kundenaufträge zu erfüllen.
+Wir haben uns bewusst gegen OTIF (On-Time, In-Full) als KPI entschieden, die nur Lieferungen im Nenner hätte, die sowohl vollständig als auch pünktlich sind. Die Annahme dahinter ist, dass wir auch unvollständige Lieferungen verkaufen können (wo nur einzelne Flaschen fehlen), nur eben weniger Flaschen.
+
 ```{r}
-shipping_grades <- services18_22 %>% mutate(shipping_grade = if_else(service=="Shipping" & Product=="Gruppe105", (DaysExecuted-DaysScheduled)/DaysScheduled, NaN) )
+# Add new column for IFR and On-time delivery
+services18_22$IFR <- services18_22$QExecuted / services18_22$QScheduled
+services18_22$On_Time <- services18_22$DaysExecuted <= services18_22$DaysScheduled  # true/false
+
+# Construct table of our vendors with quality KPI using dplyr pipe syntax
+shipping_vendor_quality <- services18_22 %>%
+  # Filter to only use our group's data and only look at shipping services 
+  filter(Product=="Gruppe105", service=="Shipping" ) %>%
+  
+  # Group by Vendors
+  group_by(vendor) %>%
+  
+  # Calculate our Vendor Quality KPI (as described above)
+  # Also calculate the OTD (using the mean is sufficient because the column is TRUE (1) for on-time deliveries and FALSE (0) for late deliveries)
+  # Also calculate average IFR, average cost per executed quentity and total number of shipments by that customer
+ summarise(Vendor_Quality=mean(On_Time)*mean(IFR),
+            OTD=mean(On_Time),
+            IFR=mean(IFR),
+            Avg_Cost_per_Qty=mean(cost/QExecuted),
+            No_Shipments=n()) %>%  
+  
+  # Sort by Vendor Quality KPI
+  arrange(Vendor_Quality)
+
+shipping_vendor_quality
 ```
-Wir haben uns dazu entschieden die prozentuale Überschreitung der geplanten Lierferzeiten als Kennzahl zu nehmen um die Lieferunternehmen zu bewerten, weil sie  ein gutes Maß der Vertrageinhaltung ist, und so Logistik langfristig planbar macht.
 
-
-```{r}
-shipping_late <- services18_22 %>% filter(Product=="Gruppe105", service=="Shipping" ) %>%
-  group_by(vendor) %>% summarise(sum_Dscheduled= sum(DaysScheduled), sum_Dexec=sum(DaysExecuted))
-
-shipping_late$grade <- (shipping_late$sum_Dexec-shipping_late$sum_Dscheduled)/ shipping_late$sum_Dscheduled
-
-shipping_late[order(shipping_late$grade),]
-```
-
-Der beste Dienstleister nach unserer Bewertung ist Bange+Hammer Shipping, da es sie 
-ihrer geplanten Lieferzeiten nur um 28.48% überschreiten, was deutlich weniger ist als ihre Konkurrenz.
+Der schlechteste Shipping-Dienstleister nach unserer Qualitätskennzahl ist hier JNT Shipping, die eine deutlich schlechtere Liefertreue bzw. OTD haben als die anderen Dienstleister. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Der beste Shipping-Dienstleister, Bange+Hammer Shipping, führt für uns 690 Lieferungen aus. Bei JNT Shipping sind es nur unwesentlich weniger (660).
+Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewertet werden (siehe Spalte "Avg_Cost_per_Qty", also Kosten pro tatsächlich ausgeführter Einheit).
 
 ## Aufgabe 15
 
-```{r}
-warehouse_grades <- services18_22 %>% mutate(warehouse_grade = if_else(service=="Warehousing" & Product=="Gruppe105", cost/QExecuted, NaN) )
-```
-
-Für die Bewertung der Warehousing-Dienstleister, haben wir die reale Kosten der Lagerung pro Stück berechnet. Dies ist ein guter Maß, da es dieZuverlässigkeit der Dienstleister sowie den Preis einbezieht. 
+Wir verwenden hier analog und mit der gleichen Begründung wie bei den Transportdienstleistern eine kombinierte Rate aus OTD und IFR.
 
 ```{r}
-warehouse_realprice <- services18_22 %>% filter(Product=="Gruppe105", service=="Warehousing" ) %>% group_by(vendor) %>% summarise(sum_cost= sum(cost), sum_Qexec=sum(QExecuted))
+# Columns for IFR and On-time delivery --> already added above
 
-warehouse_realprice$grade <- warehouse_realprice$sum_cost/warehouse_realprice$sum_Qexec
+# Construct table of our vendors with quality KPI using dplyr pipe syntax
+# Analogous to above
+warehouse_vendor_quality <- services18_22 %>%
+  # Filter to only use our group's data and only look at Warehouse services 
+  filter(Product=="Gruppe105", service=="Warehousing" ) %>%
+  
+  # Group by Vendors
+  group_by(vendor) %>%
+  
+  # Calculate our Vendor Quality KPI (as described above)
+  # Also calculate the OTD (using the mean is sufficient because the column is TRUE (1) for on-time deliveries and FALSE (0) for late deliveries)
+  # Also calculate average IFR, average cost per executed quentity and total number of services by that customer
+ summarise(Vendor_Quality=mean(On_Time)*mean(IFR),
+            OTD=mean(On_Time),
+            IFR=mean(IFR),
+            Avg_Cost_per_Qty=mean(cost/QExecuted),
+            No_WH_Services=n()) %>%  
+  
+  # Sort by Vendor Quality KPI
+  arrange(desc(Vendor_Quality))
 
-warehouse_realprice[order(warehouse_realprice$grade, decreasing = TRUE),]
+warehouse_vendor_quality
 ```
+
+Der schlechteste Warehouse-Dienstleister nach unserer Qualitätskennzahl ist hier IntEx Warehousing, die die schlechsteste IFR Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Insgesamt liegen die Dienstleister jedoch sehr nah beieinander (weniger als 2 Prozentpunkte Unterschied zwischen dem besten und schlechtesten). Auch die Anzahl der erbrachten Services ("No_WH_Services") ist sehr ähnlich.
+Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewertet werden (siehe Spalte "Avg_Cost_per_Qty", also Kosten pro tatsächlich ausgeführter Einheit).
+
 
 ## Aufgabe 16
-
 ```{r}
-year22 <- interval(ymd("2022-01-01"), ymd("2022-12-31"))
-
-warehouse_realprice22 <- services18_22 %>% filter(Product=="Gruppe105", service=="Warehousing", Date %within% year22 ) %>% group_by(vendor) %>% summarise(sum_cost= sum(cost), sum_Qexec=sum(QExecuted))
-
-warehouse_realprice22$grade <- warehouse_realprice22$sum_cost/warehouse_realprice22$sum_Qexec
-
-warehouse_realprice22 <- warehouse_realprice22[order(warehouse_realprice22$grade, decreasing = TRUE),]
+ggplot(data=warehouse_vendor_quality, aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Vendor_Quality)) +
+  geom_col() +
+  geom_point(aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Avg_Cost_per_Qty-1, color="Cost")) +
+  xlab("Warehouse-Dienstleister") + 
+  ylab("Quality") +
+  theme(legend.title=element_blank()) +
+  theme(axis.text.x=element_text(angle=60, hjust=1)) +
+  scale_y_continuous(name="Quality", sec.axis = sec_axis(~.+1, name="Cost/Executed Qty"))
 ```
-
-
-```{r}
-ggplot(data=warehouse_realprice22, aes(x=reorder(vendor, -grade), y=grade, fill=vendor)) +
-  geom_col()+
-  xlab("Dienstleister") + 
-  ylab("Realer Preis pro Stück")+
-  theme(axis.text.x=element_text(angle=60, hjust=1))
-```
+Insgesamt lassen sich bei den Warehouse-Dienstleistern nur wenig Unterschiede erkennen, weder bei der Qualität noch den Kosten. Eine Verbesserung der Performance scheint möglich (siehe z. B. Flying Mercury Warehousing mit vergleichsweise hoher Qualität bei niedrigen Kosten), wird aber vermutlich recht klein ausfallen. 
 
 ## Aufgabe 17
-
 ```{r}
-shipping_lateregion <- services18_22 %>% filter(Product=="Gruppe105", service=="Shipping", Date %within% year22  ) %>%
-  group_by(vendor, region) %>% summarise(sum_Dscheduled= sum(DaysScheduled), sum_Dexec=sum(DaysExecuted))
-
-shipping_lateregion$grade <- (shipping_lateregion$sum_Dexec-shipping_lateregion$sum_Dscheduled)/ shipping_lateregion$sum_Dscheduled
-
-#shipping_lateregion[order(shipping_lateregion$grade),]
+ggplot(data=shipping_vendor_quality, aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Vendor_Quality)) +
+  geom_col() +
+  geom_point(aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Avg_Cost_per_Qty-1, color="Cost")) +
+  xlab("Shipping-Dienstleister") + 
+  ylab("Quality") +
+  theme(legend.title=element_blank()) +
+  theme(axis.text.x=element_text(angle=60, hjust=1)) +
+  scale_y_continuous(name="Quality", sec.axis = sec_axis(~.+1, name="Cost/Executed Qty"))
 ```
+
 
 ```{r}
 ggplot(data=shipping_lateregion, aes(x=vendor, y=grade, fill=vendor)) +
