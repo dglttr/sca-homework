@@ -172,7 +172,7 @@ monthlymean_sales
 ```{r}
 monthlymean_sales[which.max(monthlymean_sales$mean_sales),]
 ```
-Der Monat mit dem höchsten durchschnittlichen Absatz von 18,31 Stück ist der Oktober 2019.
+Der Monat mit dem höchsten durchschnittlichen Absatz von etwa 18 Stück ist der Oktober 2019.
 
 ## Aufgabe 10
 ```{r}
