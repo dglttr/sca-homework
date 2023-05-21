@@ -8,6 +8,7 @@ output: pdf_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(lubridate)
 ```
 
 # Übersicht
@@ -158,16 +159,20 @@ marketshare105 <- yearly_marketshare %>% mutate(totalsales_year = sum(sum_sales)
 marketshare105
 
 ```
-Der Marktanteil des Produkts 105 bleibt relativ konstant bei ungefähr 12%, dies ändert sich fast nicht über die Jahren.
+Der Marktanteil des Produkts 105 bleibt relativ konstant bei ungefähr 12%, dies ändert sich fast nicht über die Jahre.
 
 ## Aufgabe 9
 
 ```{r}
 monthlymean_sales <- transactions18_22 %>% filter(Product == 'Gruppe105') %>% group_by(month = floor_date(Date, 'month')) %>% summarise(mean_sales= mean(Sales))
 
+monthlymean_sales
+```
+
+```{r}
 monthlymean_sales[which.max(monthlymean_sales$mean_sales),]
 ```
-Der Monat mit den höchsten durchschnittlichen Absatz von 18 Stück ist Oktober 2019.
+Der Monat mit dem höchsten durchschnittlichen Absatz von etwa 18 Stück ist der Oktober 2019.
 
 # Umsatz, Kosten und Profit
 
