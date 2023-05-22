@@ -369,20 +369,33 @@ ggplot(data=warehouse_vendor_quality, aes(x=reorder(vendor, Vendor_Quality, decr
 Insgesamt lassen sich bei den Warehouse-Dienstleistern nur wenig Unterschiede erkennen, weder bei der Qualität noch den Kosten. Eine Verbesserung der Performance scheint möglich (siehe z. B. Flying Mercury Warehousing mit vergleichsweise hoher Qualität bei niedrigen Kosten), wird aber vermutlich recht klein ausfallen. 
 
 ## Aufgabe 17
-# 
 ```{r}
-ggplot(data=shipping_vendor_quality, aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Vendor_Quality)) +
-  geom_col() +
-  geom_point(aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Avg_Cost_per_Qty-1, color="Cost")) +
-  xlab("Shipping-Dienstleister") + 
-  ylab("Quality") +
-  theme(legend.title=element_blank()) +
-  theme(axis.text.x=element_text(angle=60, hjust=1)) +
-  scale_y_continuous(name="Quality", sec.axis = sec_axis(~.+1, name="Cost/Executed Qty"))
+# Compute vendor quality including all products/groups; group by vendor and region
+vendor_qual <- services18_22 %>%
+    filter(service=="Shipping", year(Date)==2022) %>%
+    group_by(vendor, region) %>%
+    summarise(Vendor_Quality=mean(On_Time)*mean(IFR),
+              OTD=mean(On_Time),
+              IFR=mean(IFR),
+              Avg_Cost_per_Qty=mean(cost/QExecuted),
+              No_WH_Services=n())
+
+ggplot(data=vendor_qual, aes(x=vendor, y=Vendor_Quality, fill=vendor)) +
+    facet_wrap(~region, nrow=1) +
+    geom_col() +
+    geom_point(aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Avg_Cost_per_Qty-1, color="Cost")) +
+    xlab("Shipping-Dienstleister") + 
+    ylab("Quality") +
+    theme(legend.title = element_blank(), legend.position = "bottom") +
+    guides(fill=guide_legend(nrow=3)) +
+    theme(axis.text.x=element_blank(), axis.ticks.x = element_blank()) +
+    scale_y_continuous(name="Quality", sec.axis = sec_axis(~.+1, name="Cost/Executed Qty")) +
+    scale_color_brewer(palette="Set3", aesthetics = "fill")
 ```
-Insgesamt sehen wir bei den Shipping-Dienstleistern große Unterschiede bei der Qualität bei vergleichbaren Kosten. Besonders Bange+Hammer Shipping sticht hier mit einer vergleichsweise hohen Qualität (getrieben durch eine höhere OTD) hervor. Insgesamt ist die OTD Rate der Shipping-Dienstleister dennoch sehr niedrig.
-# TODO: Plot + Kommentar
-(ist z. B. Bange+Hammer Shipping in Regionen aktiv, die systematisch bessere OTD haben als andere?).
+
+Beim Gesamtvergleich über alle Produkte im Jahr 2022 und differenziert nach Regionen sehen wir bei den Shipping-Dienstleistern große Unterschiede bei der Qualität bei zumeist vergleichbaren Kosten. Dabei gibt es keinen eindeutig besten Anbieter. In Japan hat beispielsweise Bange+Hammer Shipping mit Abstand die höchste Qualität (On-Time Delivery), ist dafür aber in Südkorea unter den schlechteren Dienstleistern. AHL Express Shipping hat dagegen in den meisten Regionen eine eher niedrige Performance (in Japan und Peking sogar der schlechteste Anbieter), liegt in Südkorea aber auf Platz 2. Eine Dienstleisterauswahl muss also je nach Region erfolgen.
+
+Insgesamt ist die Qualität der Shipping-Dienstleister als schlecht zu bewerten. Mit OTD-Raten zwischen 15% bis etwa 57% können wir unseren Kunden nur sehr selten pünktlich ihre Produkte liefern.
 
 # Projektbeschreibung
 Im Folgenden soll die in Aufgabe 2.1 durchgeführte Analyse in ein Projekt überführt werden, das systematisch Mehrwert für Gruppe105 generieren soll. Dazu beschreiben wir die geplante Projektdurchführung, zu verwendende Datenquellen, die Nutzer:innen der Analysen, sowie Empfehlungen aus den bisherigen Erkenntnissen.
