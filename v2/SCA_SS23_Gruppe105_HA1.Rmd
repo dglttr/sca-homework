@@ -9,6 +9,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(lubridate)
+library(ggplot2)
 ```
 
 # Übersicht
@@ -125,7 +126,7 @@ cat("Insgesamt wurden", totalsales_105, "Flaschen Limonade von Gruppe 105 verkau
 total_marketsales <-sum(totalsales[totalsales$Group != "Lost Sales",2])
 marketshare <- totalsales_105/total_marketsales
 
-cat("Bei Betrachtung der tatsächlich verkauften Menge (ohne Lost Sales) ergibt sich ein (gerundeter) Marktanteil von", round(marketshare, digits = 3)*100, "%.")
+cat("Bei Betrachtung der tatsächlich verkauften Menge (Lost Sales ausgenommen) ergibt sich ein (gerundeter) Marktanteil von", round(marketshare, digits = 3)*100, "%. Dies entspricht fast genau dem Marktanteil aller anderen Gruppen/Produkte.")
 ```
  
 ## Aufgabe 7
@@ -160,7 +161,6 @@ marketshare105
 
 ```
 Der Marktanteil des Produkts 105 bleibt relativ konstant bei ungefähr 12%, dies ändert sich fast nicht über die Jahre.
-# Gleichverteilung über Märkte und Produkte
 
 ## Aufgabe 9
 
@@ -199,26 +199,25 @@ Der Gesamtprofit im Zeitraum 2018-2022 beträgt ca. 468 Tausend Geldeinheiten.
 ## Aufgabe 11
 
 ```{r}
+# Umsatz (revenue) aggregieren
 rev_data105 <- transactions18_22[, c("Product", "Sales", "Date")]
 rev_data105 <- subset(rev_data105, Product %in% c('Gruppe105'))
 rev_data105 <- aggregate(rev_data105$Sales, by=list(floor_date(rev_data105$Date, 'month')), FUN=sum)
 rev_data105$x <- rev_data105$x*3.9
 
+# Kosten aggregieren
 cost_data105 <- subset(cost18_22, Product %in% c('Gruppe105'))
 cost_data105 <- aggregate(cost_data105$Amount, by=list(floor_date(cost_data105$Date, 'month')), FUN=sum)
-```
 
-```{r}
+# Profit berechnen
 profit_data105 <- merge(x = rev_data105, y = cost_data105, by = "Group.1", all = TRUE)
 colnames(profit_data105) <- c('Date', 'Revenue', 'Cost')
 profit_data105$Profit <- profit_data105$Revenue - profit_data105$Cost
 
 # Nur Jahr 2020 anschauen
 profit_data105 <- profit_data105[year(profit_data105$Date) == 2020,]
-```
 
-```{r}
-library(ggplot2)
+# Plotten
 ggplot(data=profit_data105, aes(x=Date, y=Profit)) +
   geom_line(color="black")+
   geom_point()+
@@ -228,6 +227,7 @@ ggplot(data=profit_data105, aes(x=Date, y=Profit)) +
   scale_x_date(date_breaks = "1 month", date_labels = "%b %Y")+
   theme(axis.text.x=element_text(angle=60, hjust=1))
 ```
+
 Im Mai 2020 wird der kleinste, im November 2020 der größte Profit erzielt.
 
 ## Aufgabe 12
@@ -275,14 +275,12 @@ Die Kosten für die tatsächliche Lagerleistung betragen 1,57 Geldeinheiten pro 
 # Bewertung der Logistikdienstleister
 
 ## Aufgabe 14
-# Klarer formulieren wg. Delivery
-
-Wir verwenden das Produkt von On-Time Delivery (OTD) und In-Full Rate (IFR) zur Bewertung der Transportdiensleister.
+Für eine ganzheitliche Bewertung der Qualität eines Transportdienstleisters verwenden wir das Produkt von On-Time Delivery (OTD) und In-Full Rate (IFR).
 $$
 KPI = IFR * OTD = \frac{\#\ of\ orders\ delivered\ complete}{\#\ of\ customer\ orders} * \frac{\#\ of\ orders\ delivered\ on\ or\ before\ due\ date}{\#\ of\ customer\ orders}
 $$
 Beide zusammengenommen beschreiben, wie gut wir in der Lage sind, Kundenaufträge zu erfüllen.
-Wir haben uns bewusst gegen OTIF (On-Time, In-Full) als KPI entschieden, die nur Lieferungen im Nenner hätte, die sowohl vollständig als auch pünktlich sind. Die Annahme dahinter ist, dass wir auch unvollständige Lieferungen verkaufen können (wo nur einzelne Flaschen fehlen), nur eben weniger Flaschen.
+Wir haben uns bewusst gegen OTIF (On-Time, In-Full) als KPI entschieden, die nur Lieferungen im Zähler hätte, die sowohl vollständig als auch pünktlich sind. Die Annahme dahinter ist, dass wir auch unvollständige Lieferungen verkaufen können (wo nur einzelne Flaschen fehlen), nur eben weniger Flaschen.
 
 ```{r}
 # Add new column for IFR and On-time delivery
@@ -317,7 +315,7 @@ Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewe
 
 ## Aufgabe 15
 
-Wir verwenden hier analog und mit der gleichen Begründung wie bei den Transportdienstleistern eine kombinierte Rate aus OTD und IFR.
+Wir verwenden hier analog und mit der gleichen Begründung wie bei den Transportdienstleistern eine kombinierte Rate aus OTD und IFR. Die On-Time Delivery bezieht sich hier nicht auf eine Auslieferung, sondern ob der Warehousing-Auftrag in der ursprünglich geplanten Zeit durchgeführt wurde.
 
 ```{r}
 # Columns for IFR and On-time delivery --> already added above
@@ -346,7 +344,7 @@ warehouse_vendor_quality <- services18_22 %>%
 warehouse_vendor_quality
 ```
 
-Der schlechteste Warehouse-Dienstleister nach unserer Qualitätskennzahl ist hier IntEx Warehousing, die die schlechsteste IFR Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Insgesamt liegen die Dienstleister jedoch sehr nah beieinander (weniger als 2 Prozentpunkte Unterschied zwischen dem besten und schlechtesten). Auch die Anzahl der erbrachten Services ("No_WH_Services") ist sehr ähnlich.
+Der schlechteste Warehouse-Dienstleister nach unserer Qualitätskennzahl ist hier IntEx Warehousing, welcher die schlechsteste IFR aufweist. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Insgesamt liegen die Dienstleister jedoch sehr nah beieinander (weniger als 2 Prozentpunkte Unterschied zwischen dem besten und schlechtesten). Auch die Anzahl der erbrachten Services ("No_WH_Services") ist sehr ähnlich.
 Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewertet werden (siehe Spalte "Avg_Cost_per_Qty", also Kosten pro tatsächlich ausgeführter Einheit).
 
 
@@ -376,7 +374,7 @@ ggplot(data=shipping_vendor_quality, aes(x=reorder(vendor, Vendor_Quality, decre
   scale_y_continuous(name="Quality", sec.axis = sec_axis(~.+1, name="Cost/Executed Qty"))
 ```
 Insgesamt sehen wir bei den Shipping-Dienstleistern große Unterschiede bei der Qualität bei vergleichbaren Kosten. Besonders Bange+Hammer Shipping sticht hier mit einer vergleichsweise hohen Qualität (getrieben durch eine höhere OTD) hervor. Insgesamt ist die OTD Rate der Shipping-Dienstleister dennoch sehr niedrig.
-# TODO
+# TODO: Plot + Kommentar
 (ist z. B. Bange+Hammer Shipping in Regionen aktiv, die systematisch bessere OTD haben als andere?).
 
 # Projektbeschreibung
