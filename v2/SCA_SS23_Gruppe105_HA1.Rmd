@@ -165,7 +165,14 @@ Der Marktanteil des Produkts 105 bleibt relativ konstant bei ungefähr 12%, dies
 ## Aufgabe 9
 
 ```{r}
-monthlymean_sales <- transactions18_22 %>% filter(Product == 'Gruppe105') %>% group_by(month = floor_date(Date, 'month')) %>% summarise(mean_sales= mean(Sales))
+monthlymean_sales <- transactions18_22 %>%
+  filter(Product == 'Gruppe105') %>%
+  # Group and aggregate by month and year, e.g. 2019-01
+  group_by(month_and_year = floor_date(Date, 'month')) %>%
+  summarise(sales_per_month= sum(Sales)) %>%
+  # Group and average over months in all years (e. g. January)
+  group_by(month=month(month_and_year)) %>%
+  summarise(mean_sales= mean(sales_per_month))
 
 monthlymean_sales
 ```
@@ -173,7 +180,7 @@ monthlymean_sales
 ```{r}
 monthlymean_sales[which.max(monthlymean_sales$mean_sales),]
 ```
-Der Monat mit dem höchsten durchschnittlichen Absatz von etwa 18 Stück ist der Oktober 2019.
+Der Monat mit dem höchsten durchschnittlichen Absatz über alle in den Daten vorhandenen Jahre von etwa 11111 Flaschen ist der November.
 
 # Umsatz, Kosten und Profit
 
