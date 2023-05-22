@@ -318,7 +318,7 @@ shipping_vendor_quality
 ```
 
 Der schlechteste Shipping-Dienstleister nach unserer Qualitätskennzahl ist hier JNT Shipping, die eine deutlich schlechtere Liefertreue bzw. OTD haben als die anderen Dienstleister. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Der beste Shipping-Dienstleister, Bange+Hammer Shipping, führt für uns 690 Lieferungen aus. Bei JNT Shipping sind es nur unwesentlich weniger (660).
-Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewertet werden (siehe Spalte "Avg_Cost_per_Qty", also Kosten pro tatsächlich ausgeführter Einheit).
+Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewertet werden (siehe Spalte "Avg_Cost_per_Qty", also Kosten pro tatsächlich ausgeführter Einheit). Diese unterscheiden sich allerdings eher gering und wären angesichts der extrem schlechten OTD-Raten wohl erstmal zweitrangig.
 
 ## Aufgabe 15
 
@@ -352,12 +352,21 @@ warehouse_vendor_quality
 ```
 
 Der schlechteste Warehouse-Dienstleister nach unserer Qualitätskennzahl ist hier IntEx Warehousing, welcher die schlechsteste IFR aufweist. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Insgesamt liegen die Dienstleister jedoch sehr nah beieinander (weniger als 2 Prozentpunkte Unterschied zwischen dem besten und schlechtesten). Auch die Anzahl der erbrachten Services ("No_WH_Services") ist sehr ähnlich.
-Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewertet werden (siehe Spalte "Avg_Cost_per_Qty", also Kosten pro tatsächlich ausgeführter Einheit).
+Neben der reinen Qualität sollten die Dienstleister auch nach ihren Kosten bewertet werden (siehe Spalte "Avg_Cost_per_Qty", also Kosten pro tatsächlich ausgeführter Einheit). Flying Mercury Warehousing ist hier interessant, da es die zweitbeste Qualität bei niedrigsten Preise aufweist.
 
 
 ## Aufgabe 16
 ```{r}
-ggplot(data=warehouse_vendor_quality, aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Vendor_Quality)) +
+WH_vendor_qual_all_2022 <- services18_22 %>%
+    filter(service=="Warehousing", year(Date)==2022) %>%
+    group_by(vendor) %>%
+    summarise(Vendor_Quality=mean(On_Time)*mean(IFR),
+              OTD=mean(On_Time),
+              IFR=mean(IFR),
+              Avg_Cost_per_Qty=mean(cost/QExecuted),
+              No_WH_Services=n())
+
+ggplot(data=WH_vendor_qual_all_2022, aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Vendor_Quality)) +
   geom_col() +
   geom_point(aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Avg_Cost_per_Qty-1, color="Cost")) +
   xlab("Warehouse-Dienstleister") + 
@@ -366,12 +375,14 @@ ggplot(data=warehouse_vendor_quality, aes(x=reorder(vendor, Vendor_Quality, decr
   theme(axis.text.x=element_text(angle=60, hjust=1)) +
   scale_y_continuous(name="Quality", sec.axis = sec_axis(~.+1, name="Cost/Executed Qty"))
 ```
-Insgesamt lassen sich bei den Warehouse-Dienstleistern nur wenig Unterschiede erkennen, weder bei der Qualität noch den Kosten. Eine Verbesserung der Performance scheint möglich (siehe z. B. Flying Mercury Warehousing mit vergleichsweise hoher Qualität bei niedrigen Kosten), wird aber vermutlich recht klein ausfallen. 
+Beim Gesamtvergleich über alle Produkte im Jahr 2022 sehen wir bei den Warehousing-Dienstleistern eher geringe Unterschiede bei der Qualität, bei allerdings unterschiedlichen Kosten. Gifter Warehousing weist die höchste Qualität (hier aufgrund der Daten ausschließlich bestimmt durch die IFR) bei eher geringen Kosten auf. IntEx Warehousing weist die niedrigste IFR bei höchsten Kosten auf.
+
+Insgesamt ist die Qualität der Warehousing-Dienstleister mit einer Qualität (hier ausschließlich bestimmt durch die IFR) von >80% als nicht schlecht, aber verbesserungswürdig zu bewerten
 
 ## Aufgabe 17
 ```{r}
 # Compute vendor quality including all products/groups; group by vendor and region
-vendor_qual <- services18_22 %>%
+SH_vendor_qual_2022 <- services18_22 %>%
     filter(service=="Shipping", year(Date)==2022) %>%
     group_by(vendor, region) %>%
     summarise(Vendor_Quality=mean(On_Time)*mean(IFR),
@@ -380,7 +391,7 @@ vendor_qual <- services18_22 %>%
               Avg_Cost_per_Qty=mean(cost/QExecuted),
               No_WH_Services=n())
 
-ggplot(data=vendor_qual, aes(x=vendor, y=Vendor_Quality, fill=vendor)) +
+ggplot(data=SH_vendor_qual_2022, aes(x=vendor, y=Vendor_Quality, fill=vendor)) +
     facet_wrap(~region, nrow=1) +
     geom_col() +
     geom_point(aes(x=reorder(vendor, Vendor_Quality, decreasing=TRUE), y=Avg_Cost_per_Qty-1, color="Cost")) +
@@ -455,5 +466,5 @@ Die wichtigsten Analyseergebnisse sind relevant für Führungskräfte im Bereich
 ## Empfehlungen basierend auf Teil 2.1
 Aus unseren Analysen in Teil 2.1 sehen wir für Logistikdienstleister folgende Schlüsse:
 
-- Shipping-Dienstleister: Hier sollte Verträge mit Bange+Hammer Shipping priorisiert werden, da diese mit Abstand die beste OTD Performance aufzeigen, bei durchschnittlichen Kosten. Insgesamt ist jedoch eine sehr schlechte OTD Rate von unter 35% zu verzeichnen, was langfristig nicht akzeptabel ist.
-- Warehousing-Dienstleister: Hier besteht kein akuter Handlungszwang. Nach Möglichkeit sollten Verträge mit Flying Mercury Warehousing ausgeweitet werden, da diese bei hoher IFR (Rang 2) die geringsten Kosten aufweisen.
+- Shipping-Dienstleister: In Anbetracht der sehr schlechten OTD-Rate von unter 35% sind hier dringend Verbesserungen nötig. Als erste Empfehlung sollten für Gruppe 105 Verträge mit Bange+Hammer Shipping priorisiert werden, da diese mit Abstand die beste OTD Performance aufzeigen, bei durchschnittlichen Kosten. Dies sollte allerdings nach Region nochmal differenziert betrachtet werden.
+- Warehousing-Dienstleister: Hier besteht ein etwas geringerer Handlungszwang. Konkret für Gruppe 105 sollten nach Möglichkeit Verträge mit Flying Mercury Warehousing ausgeweitet werden, da diese bei hoher IFR (Rang 2) die geringsten Kosten aufweisen.
