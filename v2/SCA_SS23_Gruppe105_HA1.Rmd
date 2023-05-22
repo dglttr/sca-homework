@@ -180,7 +180,7 @@ monthlymean_sales
 ```{r}
 monthlymean_sales[which.max(monthlymean_sales$mean_sales),]
 ```
-Der Monat mit dem höchsten durchschnittlichen Absatz über alle in den Daten vorhandenen Jahre von etwa 11111 Flaschen ist der November.
+Der Monat mit dem höchsten durchschnittlichen Absatz über alle in den Daten vorhandenen Jahre von etwa 11111 Flaschen ist der November. Insgesamt sind die Schwankungen über das Jahr hinweg aber eher gering, die Limonadennachfrage scheint relativ konstant, selbst im Sommer, wo man vielleicht Abweichungen erwarten würde.
 
 # Umsatz, Kosten und Profit
 
