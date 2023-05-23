@@ -186,7 +186,7 @@ cat("Der Unterschied zwischen der absatzstärksten und absatzschwächsten Region
     round(1 - min(regions_summary$`Avg Sales per Supermarket`)/max(regions_summary$`Avg Sales per Supermarket`), 3)*100, "%."
 )
 ```
-
+Die Philippinen haben den größten Absatz, und Shanghai den niedriegsten.
 ## Aufgabe 8
 
 ```{r}
@@ -194,11 +194,11 @@ cat("Der Unterschied zwischen der absatzstärksten und absatzschwächsten Region
 yearly_marketshare <- transactions18_22 %>% filter(Product != 'Lost Sales') %>% group_by(year = floor_date(Date, 'year'), Product) %>% summarise(sum_sales= sum(Sales))
 
 # Prozentualer Anteil der Gruppe105 an der tatsächlich verkauften Menge pro Jahr
-marketshare105 <- yearly_marketshare %>% mutate(totalsales_year = sum(sum_sales)) %>% filter(Product=='Gruppe105') %>%  mutate(relative_marketshare = sum_sales/totalsales_year)
+marketshare105 <- yearly_marketshare %>% mutate(totalsales_year = sum(sum_sales)) %>% filter(Product=='Gruppe105') %>%  mutate(relative_marketshare = sum_sales/totalsales_year*100)
 
-marketshare105  %>% kable(row.names = FALSE, caption = 'Jährliche Umsatzdaten')
+marketshare105  %>% kable(row.names = FALSE, caption = 'Jährliche Umsatzdaten', digits = 2)
 ```
-Der Marktanteil des Produkts 105 bleibt relativ konstant bei ungefähr 12%, dies ändert sich fast nicht über die Jahre.
+Der Marktanteil des Produkts 105 bleibt relativ konstant bei ungefähr 12,4%, dies ändert sich fast nicht über die Jahre.
 
 ## Aufgabe 9
 
@@ -218,7 +218,7 @@ monthlymean_sales %>% kable(row.names = FALSE, caption = 'Durchschnittliche Mona
 
 ```{r}
 # Maximum der durchschnittlichen Monatsumsätze
-monthlymean_sales[which.max(monthlymean_sales$mean_sales),]
+monthlymean_sales[which.max(monthlymean_sales$mean_sales),]  %>% kable()
 ```
 Der Monat mit dem höchsten durchschnittlichen Absatz über alle in den Daten vorhandenen Jahre von etwa 11111 Flaschen ist der November. Insgesamt sind die Schwankungen über das Jahr hinweg aber eher gering, die Limonadennachfrage scheint relativ konstant, selbst im Sommer, wo man vielleicht Abweichungen erwarten würde.
 
@@ -356,7 +356,7 @@ shipping_vendor_quality <- services18_22 %>%
   # Sortieren nach Vendor Quality KPI
   arrange(Vendor_Quality)
 
-shipping_vendor_quality %>% kable(row.names = FALSE)
+shipping_vendor_quality %>% kable(row.names = FALSE, caption = 'Qualitätskennzahlen für Shipping-Dienstleister', digits = 3)
 ```
 
 Der schlechteste Shipping-Dienstleister nach unserer Qualitätskennzahl ist hier JNT Shipping, die eine deutlich schlechtere Liefertreue bzw. OTD haben als die anderen Dienstleister. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Der beste Shipping-Dienstleister, Bange+Hammer Shipping, führt für uns 690 Lieferungen aus. Bei JNT Shipping sind es nur unwesentlich weniger (660).
@@ -387,7 +387,7 @@ warehouse_vendor_quality <- services18_22 %>%
   # Sortieren nach Vendor Quality KPI
   arrange(desc(Vendor_Quality))
 
-warehouse_vendor_quality %>% kable(row.names = FALSE)
+warehouse_vendor_quality %>% kable(row.names = FALSE, caption = 'Qualitätskennzahlen für Warehouse-Dienstleister', digits = 3)
 ```
 
 Der schlechteste Warehouse-Dienstleister nach unserer Qualitätskennzahl ist hier IntEx Warehousing, welcher die schlechsteste IFR aufweist. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Insgesamt liegen die Dienstleister jedoch sehr nah beieinander (weniger als 2 Prozentpunkte Unterschied zwischen dem besten und schlechtesten). Auch die Anzahl der erbrachten Services ("No_WH_Services") ist sehr ähnlich.
