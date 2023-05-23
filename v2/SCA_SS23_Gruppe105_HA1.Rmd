@@ -192,16 +192,19 @@ revenue_105
 Der Gesamtumsatz im Zeitraum 2018-2022 beträgt ca. 2.41 Millionen Geldeinheiten.
 
 ```{r}
-totalcost_105 <- sum(cost18_22[cost18_22$Product =="Gruppe105",2])
+transport_cost_germany_asia <- 0.6
+
+totalcost_105 <- sum(cost18_22[cost18_22$Product =="Gruppe105",2]) + transport_cost_germany_asia * totalsales_105
 print(totalcost_105)
 ```
-Die Gesamtkosten im Zeitraum 2018-2022 betragen ca. 1.95 Millionen Geldeinheiten.
+Die Gesamtkosten setzen sich zusammen aus den Transportkosten von Deutschland nach Asien sowie den Kosten für Logistikdienstleister im Warehousing der Großlager in Asien und den Transport von den Großlagern zu den Supermärkten als Endabnehmer.
+Die Gesamtkosten im Zeitraum 2018-2022 betragen damit ca. 2.32 Millionen Geldeinheiten.
 
 ```{r}
 profit_105 <- revenue_105 - totalcost_105
 profit_105
 ```
-Der Gesamtprofit im Zeitraum 2018-2022 beträgt ca. 468 Tausend Geldeinheiten.
+Der Gesamtprofit im Zeitraum 2018-2022 beträgt ca. 97.000 Geldeinheiten.
 
 ## Aufgabe 11
 
@@ -215,6 +218,7 @@ rev_data105$x <- rev_data105$x*3.9
 # Kosten aggregieren
 cost_data105 <- subset(cost18_22, Product %in% c('Gruppe105'))
 cost_data105 <- aggregate(cost_data105$Amount, by=list(floor_date(cost_data105$Date, 'month')), FUN=sum)
+cost_data105$x <- rev_data105$x / 3.9 * 0.6   # add transport costs from Germany to Asia
 
 # Profit berechnen
 profit_data105 <- merge(x = rev_data105, y = cost_data105, by = "Group.1", all = TRUE)
@@ -235,7 +239,7 @@ ggplot(data=profit_data105, aes(x=Date, y=Profit)) +
   theme(axis.text.x=element_text(angle=60, hjust=1))
 ```
 
-Im Mai 2020 wird der kleinste, im November 2020 der größte Profit erzielt.
+Im März 2020 wird der kleinste, im November 2020 der größte Profit erzielt. Dieser enthält alle Kosten wie in Aufgabe 10 beschrieben.
 
 ## Aufgabe 12
 
