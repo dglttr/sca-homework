@@ -10,7 +10,7 @@ header-includes:
 ---
 
 ```{r setup, include=FALSE}
-## Laden von Packages
+# Laden von Packages
 library(tidyverse)
 library(lubridate)
 library(scales)
@@ -24,7 +24,7 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 ## Aufgabe 1
 
 ```{r}
-## Laden der Daten in die Dataframes 'cost', 'services', 'prices und 'transactions'
+# Laden der Daten in die Dataframes 'cost', 'services', 'prices' und 'transactions'
 cost <- read.csv("data/output_cost_8Players_v0020.csv", sep=";", dec=",")
 services <- read.csv("data/output_services_8Players_v0020.csv", sep=";", dec=",")
 prices <- read.csv("data/output_prices_8Players_v0020.csv", sep=";", dec=",")
@@ -62,16 +62,15 @@ summary(transactions)
 # Neue Spalte 'Date' im 'cost' Dataframe mit den Daten aus den Spalten 'Year' und 'Month'
 cost$Date <- make_date(cost$Year, cost$Month)
 
-## Löschen der Spalten  'Year' und 'Month, da sie nicht mehr nötig
+# Löschen der Spalten  'Year' und 'Month, da sie nicht mehr nötig sind
 cost <- subset(cost, select=-c(Year, Month))
 
 # Neue Spalte 'Date' im 'services' Dataframe mit den Daten aus den Spalten 'Year', 'Month' und 'Day' 
 services$Date <- make_date(services$Year, services$Month, services$Day)
-## Löschen der Spalten 'Year', 'Month' und 'Day' , da sie nicht mehr nötig
+# Löschen der Spalten 'Year', 'Month' und 'Day' , da sie nicht mehr nötig sind
 services <- subset(services, select=-c(Year, Month, Day))
 
 # Analog für 'transactions'
-# Erstellen einer 'Date' Spalte und Löschen der individuellen Variablen 'Year', 'Month' und 'Day' 
 transactions$Date <- make_date(transactions$Year, transactions$Month, transactions$Day)
 transactions <- subset(transactions, select=-c(Year, Month, Day))
 ```
@@ -110,7 +109,8 @@ summary(transactions18_22)
 ```{r}
 # Extrahieren der Regionen, in dem Verkauf oder Warenempfang stattgefunden haben
 transactions_regions <- data.frame(regions=unique(transactions18_22$region))
-transactions_regions %>% kable(row.names = FALSE)
+# Nutzen der Kable() Funktion von Knittr für bessere Tabellendarstellung
+transactions_regions %>% kable(row.names = FALSE, caption = 'Absatzregionen')
 ```
 ## Aufgabe 4
 
@@ -118,13 +118,13 @@ transactions_regions %>% kable(row.names = FALSE)
 # Selektion der Spalten 'vendor' und 'service'
 service_vendors <- services18_22[, c("vendor", "service")]
 
-# Selektion der einzigartigen 'vendor' für Warehousing-DL und Shipping-DL
+# Liste der einzelnen Warehousing- und Shipping-Dienstleister
 service_vendors <- unique(service_vendors)
 
 # Sortieren der Tabelle nach Shipping‐DL und Warehousing‐DL
 service_vendors <- service_vendors[order(service_vendors$service),]
 
-service_vendors %>% kable(row.names = FALSE)
+service_vendors %>% kable(row.names = FALSE, caption = 'Dienstleister')
 ```
 
 ## Aufgabe 5
@@ -132,13 +132,13 @@ service_vendors %>% kable(row.names = FALSE)
 # Selektion der Spalten 'region' und 'storename'
 supermarkets <- transactions18_22[, c("region", "storename")]
 
-# Selektion der einzigartigen 'supermarkets' 
+# Selektion der einzelnen Supermärkte 
 supermarkets <- unique(supermarkets)
 
-# Selektion aller existierenden Supermärkte in 'Shangh','Peking' und 'Skorea'
+# Selektion aller existierenden Supermärkte in Shanghai, Peking und Südkorea
 supermarkets <- subset(supermarkets, region %in% c('Shangh','Peking', 'Skorea'))
 
-supermarkets %>% kable(row.names = FALSE)
+supermarkets %>% kable(row.names = FALSE, caption = 'Supermärkte in Shanghai, Peking und Südkorea')
 ```
 # Marktübersicht
 
@@ -178,8 +178,7 @@ colnames(regions_summary) <- c('Region', 'Total sales')
 # Durschnittliche Absatzmenge pro Supermarkt
 regions_summary$`Avg Sales per Supermarket` <- regions_summary$`Total sales`/5
 
-regions_summary
-
+regions_summary %>% kable(row.names = FALSE, caption = 'Absatzdaten nach Region')
 ```
 
 ```{r}
@@ -197,26 +196,28 @@ yearly_marketshare <- transactions18_22 %>% filter(Product != 'Lost Sales') %>% 
 # Prozentualer Anteil der Gruppe105 an der tatsächlich verkauften Menge pro Jahr
 marketshare105 <- yearly_marketshare %>% mutate(totalsales_year = sum(sum_sales)) %>% filter(Product=='Gruppe105') %>%  mutate(relative_marketshare = sum_sales/totalsales_year)
 
-marketshare105
+marketshare105  %>% kable(row.names = FALSE, caption = 'Jährliche Umsatzdaten')
 ```
 Der Marktanteil des Produkts 105 bleibt relativ konstant bei ungefähr 12%, dies ändert sich fast nicht über die Jahre.
 
 ## Aufgabe 9
 
 ```{r}
+# Berechnung des durchschnittlichen Umsatzes
 monthlymean_sales <- transactions18_22 %>%
   filter(Product == 'Gruppe105') %>%
-  # Group and aggregate by month and year, e.g. 2019-01
+  # Nach Monat und Jahr aggregieren 
   group_by(month_and_year = floor_date(Date, 'month')) %>%
   summarise(sales_per_month= sum(Sales)) %>%
-  # Group and average over months in all years (e. g. January)
+  # Berechnen des Durchschnitts nach Jahren 
   group_by(month=month(month_and_year)) %>%
   summarise(mean_sales= mean(sales_per_month))
 
-monthlymean_sales
+monthlymean_sales %>% kable(row.names = FALSE, caption = 'Durchschnittliche Monatsumsätze')
 ```
 
 ```{r}
+# Maximum der durchschnittlichen Monatsumsätze
 monthlymean_sales[which.max(monthlymean_sales$mean_sales),]
 ```
 Der Monat mit dem höchsten durchschnittlichen Absatz über alle in den Daten vorhandenen Jahre von etwa 11111 Flaschen ist der November. Insgesamt sind die Schwankungen über das Jahr hinweg aber eher gering, die Limonadennachfrage scheint relativ konstant, selbst im Sommer, wo man vielleicht Abweichungen erwarten würde.
@@ -265,7 +266,7 @@ profit_data105 <- merge(x = rev_data105, y = cost_data105, by = "Group.1", all =
 colnames(profit_data105) <- c('Date', 'Revenue', 'Cost')
 profit_data105$Profit <- profit_data105$Revenue - profit_data105$Cost
 
-# Gesamtprofit nur Jahr 2020 anschauen
+# Gesamtprofit nur für das Jahr 2020
 profit_data105 <- profit_data105[year(profit_data105$Date) == 2020,]
 
 
@@ -285,13 +286,12 @@ Im Mai 2020 wird der kleinste, im November 2020 der größte Profit erzielt.
 ## Aufgabe 12
 
 ```{r}
-
 shipping_data105 <- services18_22 %>% filter(Product=="Gruppe105", service=="Shipping")
 # Konditionierte Spalte um verspätete Lieferungen zu indentifizieren
 shipping_data105$late <- ifelse(shipping_data105$DaysExecuted > shipping_data105$DaysScheduled, "Verspätet", "Pünktlich")
-# Kosten verspätete und pünktliche Lieferungen pro Region
+# Kosten verspäteter und pünktlicher Lieferungen pro Region
 shipping_byregion <- summarise(group_by(shipping_data105, region, late), total_cost=sum(cost))
-# Visualisierung der Kosten verspätete und pünktliche Lieferungen pro Region
+# Visualisierung der Kosten verspäteter und pünktlicher Lieferungen pro Region
 ggplot(data=shipping_byregion, aes(x=region, y=total_cost, fill=late)) +
   geom_bar(position="dodge", stat="identity")+
   xlab("Region") + 
@@ -310,15 +310,15 @@ Für die Region Philippinen sind nicht nur die Gesamtausgaben für Transporte am
 ```{r}
 warehouse_data <- services18_22 %>% filter(Product=="Gruppe105", service=="Warehousing" ) %>% summarise(sum_scheduled= sum(QScheduled), sum_exec=sum(QExecuted), sum_cost=sum(cost))
 
-# Cost/ Executed Quantity
+# Kosten pro abgefertigter Menge
 real_unitcost <- warehouse_data$sum_cost/warehouse_data$sum_exec
 real_unitcost
 
-# Cost/Scheduled Quantity
+# Kosten pro vereinbarter Menge 
 scheduled_unitcost <- warehouse_data$sum_cost / warehouse_data$sum_scheduled
 scheduled_unitcost
 
-# Comparison
+# Kostenvergleich der tatsächlichen abgefertigten Menge mit der vereinbarten Menge 
 real_unitcost / scheduled_unitcost - 1
 
 ```
@@ -345,8 +345,8 @@ shipping_vendor_quality <- services18_22 %>%
   filter(Product=="Gruppe105", service=="Shipping" ) %>%
   group_by(vendor) %>%
   
-  # Berechnung der OTD (Der boolean Lieferung wird numeric 0 für verspätete Lieferungen und 1 für pünktliche Lieferungen zugeordnet, deswegen können wir den mean benutzen) 
-  # Berechunung durschnittlichen IFR, durschnittlichen Kosten pro tatsächlich abgefertigt Menge und Anzahl der Lieferungen
+  # Berechnung der OTD (Der boolean Lieferung wird numeric 0 für verspätete Lieferungen und 1 für pünktliche Lieferungen zugeordnet, deswegen können wir den mean() benutzen) 
+  # Berechunung des durschnittlichen IFR, durschnittlichen Kosten pro tatsächlicher abgefertigten Menge und Anzahl der Lieferungen
  summarise(Vendor_Quality=mean(On_Time)*mean(IFR),
             OTD=mean(On_Time),
             IFR=mean(IFR),
@@ -356,7 +356,7 @@ shipping_vendor_quality <- services18_22 %>%
   # Sortieren nach Vendor Quality KPI
   arrange(Vendor_Quality)
 
-shipping_vendor_quality
+shipping_vendor_quality %>% kable(row.names = FALSE)
 ```
 
 Der schlechteste Shipping-Dienstleister nach unserer Qualitätskennzahl ist hier JNT Shipping, die eine deutlich schlechtere Liefertreue bzw. OTD haben als die anderen Dienstleister. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Der beste Shipping-Dienstleister, Bange+Hammer Shipping, führt für uns 690 Lieferungen aus. Bei JNT Shipping sind es nur unwesentlich weniger (660).
@@ -374,13 +374,10 @@ Wir verwenden hier analog und mit der gleichen Begründung wie bei den Transport
 warehouse_vendor_quality <- services18_22 %>%
   # Filter Warehouse-DL nach Gruppe 105  
   filter(Product=="Gruppe105", service=="Warehousing" ) %>%
-  
-  # Group by Vendors
   group_by(vendor) %>%
   
   
-  # Berechnung der OTD (Der boolean Lieferung wird numeric 0 für verspätete Lieferungen und 1 für pünktliche Lieferungen zugeordnet, deswegen können wir den mean benutzen) 
-  # Berechunung durschnittlichen IFR, durschnittlichen Kosten pro tatsächlich abgefertigt Menge und Anzahl der Lieferungen
+  # Berechnung der OTD und IFR analog zu A16 
  summarise(Vendor_Quality=mean(On_Time)*mean(IFR),
             OTD=mean(On_Time),
             IFR=mean(IFR),
@@ -390,7 +387,7 @@ warehouse_vendor_quality <- services18_22 %>%
   # Sortieren nach Vendor Quality KPI
   arrange(desc(Vendor_Quality))
 
-warehouse_vendor_quality
+warehouse_vendor_quality %>% kable(row.names = FALSE)
 ```
 
 Der schlechteste Warehouse-Dienstleister nach unserer Qualitätskennzahl ist hier IntEx Warehousing, welcher die schlechsteste IFR aufweist. Da die IFR für Shipping-Dienstleistungen in diesem Datensatz immer 1 beträgt, ist dies der einzige Einflussfaktor. Insgesamt liegen die Dienstleister jedoch sehr nah beieinander (weniger als 2 Prozentpunkte Unterschied zwischen dem besten und schlechtesten). Auch die Anzahl der erbrachten Services ("No_WH_Services") ist sehr ähnlich.
@@ -425,7 +422,7 @@ Insgesamt ist die Qualität der Warehousing-Dienstleister mit einer Qualität (h
 ## Aufgabe 17
 ```{r}
 
-# Visualisierung der KPI für Shipping-Dienstleister pro region
+# Visualisierung der KPI für Shipping-Dienstleister pro Region
 SH_vendor_qual_2022 <- services18_22 %>%
     filter(service=="Shipping", year(Date)==2022) %>%
     group_by(vendor, region) %>%
@@ -442,7 +439,7 @@ ggplot(data=SH_vendor_qual_2022, aes(x=vendor, y=Vendor_Quality, fill=vendor)) +
     xlab("Shipping-Dienstleister") + 
     ylab("Quality") +
     theme(legend.title = element_blank(), legend.position = "bottom") +
-    guides(fill=guide_legend(nrow=3)) +
+    guides(fill=guide_legend(nrow=4)) +
     theme(axis.text.x=element_blank(), axis.ticks.x = element_blank()) +
     scale_y_continuous(name="Quality", sec.axis = sec_axis(~.+1, name="Cost/Executed Qty")) +
     scale_color_brewer(palette="Set3", aesthetics = "fill")
