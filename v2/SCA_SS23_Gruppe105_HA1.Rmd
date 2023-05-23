@@ -450,16 +450,19 @@ Beim Gesamtvergleich über alle Produkte im Jahr 2022 und differenziert nach Reg
 Insgesamt ist die Qualität der Shipping-Dienstleister als schlecht zu bewerten. Mit OTD-Raten zwischen 15% bis etwa 57% können wir unseren Kunden nur sehr selten pünktlich ihre Produkte liefern.
 
 # Projektbeschreibung
+
 Im Folgenden soll die in Aufgabe 2.1 durchgeführte Analyse in ein Projekt überführt werden, das systematisch Mehrwert für Gruppe105 generieren soll. Dazu beschreiben wir die geplante Projektdurchführung, zu verwendende Datenquellen, die Nutzer:innen der Analysen, sowie Empfehlungen aus den bisherigen Erkenntnissen.
 
 ## Projektdurchführung
 Bei der Durchführung des Projektes orientieren wir uns am Standard-Vorgehen nach dem Cross-Industry Standard Process for Data Mining (CRISP-DM), der aus sechs Schritten besteht.
 
 ### 1. Problemidentifizierung
-In der ersten Phase betrachten wir das wirtschaftliche Problem, noch ohne Blick auf die Daten. Dazu machen wir eine Lageanalyse, sprechen mit relevanten internen Stakeholdern wie der Logistik- oder Vertriebsabteilung, und legen abgestimmte Analyseziele fest. Diese wären zum Beispiel die Identifizierung von Möglichkeiten zur Erhöhung der Profitabilität, der Nachfrage (und damit dem Umsatz), oder der Kundenzufriedenheit.
+In der ersten Phase betrachten wir das wirtschaftliche Problem, noch ohne Blick auf die Daten. Dazu machen wir eine Lageanalyse, sprechen mit relevanten internen Stakeholdern wie der Logistik- oder Vertriebsabteilung, und legen abgestimmte Analyseziele fest. Ein mögliches Ziel der Gruppe 105 ist die Auswahl der besten Liefer- und Lager-Dienstleister anhand von Qualität KPIs. Dies kann in Verbindung mit Nachfragevorhersage, dazu führen Logistikdienstleistungen nicht mehr direkt vom Spotmarket zu beziehen, sondern sie durch preiswertere und langfristig planbare Verträge zu ersetzen.
+Ein weiteres Ziel kann die Marktanalyse in Bezug auf Konkurrenz in den fünf Regionen sein, um den Marktanteil zu vergrößern und die Kundenkenntnis zu verbessern und damit Kundentreue zu erhöhen. Alle diese Ziele können zu einer Erhöhung der Profitabilität der Gruppe 105 beitragen.
+
 
 ### 2. Datenbeschaffung
-Als nächstes mappen und beschreiben wir existierende Datenquellen. Basierend auf dieser Übersicht können wir relevante Daten systematisch auswählen oder wo nötig weitere Daten beschaffen.
+Als nächstes mappen und beschreiben wir existierende Datenquellen. Die Datensätze der Jahre 2018 bis 2022 wurden bereits von den Supermärkten sowie von den Logistikdienstleistern bereitgestellt, sie beinhalten auch Informationen über die Konkurrenz in den fünf Regionen. Basierend auf dieser Übersicht können wir relevante Daten systematisch auswählen oder wo nötig weitere Daten beschaffen.
 
 ### 3. Datenaufbereitung
 Hier extrahieren wir zunächst die zuvor festgelegten Daten aus internen Quellsystemen wie SAP oder externen Datenbanken.
