@@ -1,0 +1,116 @@
+---
+title: "Gruppe 105 Hausaufgabe 2"
+subtitle: "Supply Chain Analytics SS23"
+author: "Cordelia Mena Hernandez, Daniel Glatter"
+date: "2023-05-24"
+output: pdf_document
+header-includes:
+  \usepackage{fvextra}
+  \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
+
+```{r setup, include=FALSE}
+# Laden von Packages
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(zoo)
+library(scales)
+library(ggplot2)
+library(knitr)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Daten vorbereiten
+
+## Aufgabe 1
+
+```{r}
+
+```
+
+
+## Aufgabe 2
+
+```{r}
+
+```
+
+## Aufgabe 3
+```{r}
+
+```
+
+# Modellierung vorbereiten
+
+## Aufgabe 4
+
+```{r}
+
+```
+
+## Aufgabe 5
+```{r}
+
+```
+
+# Modellierung
+
+## Aufgabe 6
+
+```{r}
+
+```
+ 
+## Aufgabe 7
+
+```{r}
+
+```
+
+
+## Aufgabe 8
+
+```{r}
+
+```
+
+## Aufgabe 9
+
+```{r}
+
+```
+
+
+## Aufgabe 10
+```{r}
+
+```
+
+## Aufgabe 11
+
+```{r}
+
+```
+
+## Aufgabe 12
+
+```{r}
+
+```
+
+
+
+## Aufgabe 13
+
+```{r}
+
+```
+
+# Abschluss
+
+## Aufgabe 14
+
+```{r}
+
+```
