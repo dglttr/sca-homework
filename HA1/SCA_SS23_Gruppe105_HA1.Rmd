@@ -239,7 +239,7 @@ transport_cost_germany_asia <- 0.6
 totalcost_105 <- sum(cost18_22[cost18_22$Product =="Gruppe105",2]) + transport_cost_germany_asia * totalsales_105 
 totalcost_105
 ```
-e Gesamtkosten setzen sich zusammen aus den Transportkosten von Deutschland nach Asien sowie den Kosten für Logistikdienstleister im Warehousing der Großlager in Asien und den Transport von den Großlagern zu den Supermärkten als Endabnehmer.
+Die Gesamtkosten setzen sich zusammen aus den Transportkosten von Deutschland nach Asien sowie den Kosten für Logistikdienstleister im Warehousing der Großlager in Asien und den Transport von den Großlagern zu den Supermärkten als Endabnehmer.
  Die Gesamtkosten im Zeitraum 2018-2022 betragen damit ca. 2.32 Millionen Geldeinheiten.
 
 ```{r}
