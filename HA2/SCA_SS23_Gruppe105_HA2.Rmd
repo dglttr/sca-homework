@@ -23,6 +23,38 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 
 # Daten vorbereiten
 
+```{r}
+# DATEN LADEN
+cost <- read.csv("../HA1/data/output_cost_8Players_v0020.csv", sep=";", dec=",")
+services <- read.csv("../HA1/data/output_services_8Players_v0020.csv", sep=";", dec=",")
+prices <- read.csv("../HA1/data/output_prices_8Players_v0020.csv", sep=";", dec=",")
+transactions <- read.csv("../HA1/data/output_transactions_8Players_v0020.csv", sep=";", dec=",")
+
+# VARIABLEN AUFBEREITEN
+# Getrenntes Jahr/Monat/Datum durch Datumsformat ersetzen
+cost$Date <- make_date(cost$Year, cost$Month)
+cost <- subset(cost, select=-c(Year, Month))
+
+services$Date <- make_date(services$Year, services$Month, services$Day)
+services <- subset(services, select=-c(Year, Month, Day))
+
+transactions$Date <- make_date(transactions$Year, transactions$Month, transactions$Day)
+transactions <- subset(transactions, select=-c(Year, Month, Day))
+
+# Characters in Factors umwandeln
+cost$Product = as.factor(cost$Product)
+services$region = as.factor(services$region)
+services$storename = as.factor(services$storename)
+services$Product = as.factor(services$Product)
+services$vendor = as.factor(services$vendor)
+services$service = as.factor(services$service)
+prices$vendor = as.factor(prices$vendor)
+prices$service = as.factor(prices$service)
+transactions$region = as.factor(transactions$region)
+transactions$storename = as.factor(transactions$storename)
+transactions$Product = as.factor(transactions$Product)
+```
+
 ## Aufgabe 1
 
 ```{r}
