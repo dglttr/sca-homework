@@ -299,7 +299,7 @@ quart_2
 
 ```{r}
 fcast_Peking$x
-mean(fcast_Peking$x[1:4,7])
+mean(fcast_Peking$x[seq(7, 43, 12)])
 fcast_Peking$x[55]
 fcast_Peking$mean[7]
 ```
