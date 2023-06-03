@@ -23,22 +23,56 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 
 # Daten vorbereiten
 
+```{r}
+# Laden der Daten in die Dataframes 'cost', 'services', 'prices' und 'transactions'
+cost <- read.csv("../HA1/data/output_cost_8Players_v0020.csv", sep=";", dec=",")
+services <- read.csv("../HA1/data/output_services_8Players_v0020.csv", sep=";", dec=",")
+prices <- read.csv("../HA1/data/output_prices_8Players_v0020.csv", sep=";", dec=",")
+transactions <- read.csv("../HA1/data/output_transactions_8Players_v0020.csv", sep=";", dec=",")
+```
+
+```{r}
+year18_22 <- interval(ymd("2018-01-01"), ymd("2022-12-31"))
+
+cost$Date <- make_date(cost$Year, cost$Month)
+cost <- subset(cost, select=-c(Year, Month))
+cost <- cost[cost$Date %within% year18_22, ]
+
+services$Date <- make_date(services$Year, services$Month, services$Day)
+services <- subset(services, select=-c(Year, Month, Day))
+services <- services[services$Date %within% year18_22, ]
+
+
+transactions$Date <- make_date(transactions$Year, transactions$Month, transactions$Day)
+transactions <- subset(transactions, select=-c(Year, Month, Day))
+transactions <- transactions[transactions$Date %within% year18_22, ]
+```
+
 ## Aufgabe 1
 
 ```{r}
-
+Demand <- transactions %>% arrange(Date) %>%  group_by(month = floor_date(Date, 'month'), region) %>% summarise(sum_sales= sum(Sales))
+Demand <- Demand %>% mutate(Period = cur_group_id()) %>% subset(select = -c(month))
+head(Demand) %>%  kable()
+#Demand[order(Demand$region), ]
 ```
-
 
 ## Aufgabe 2
 
 ```{r}
-
+#reshape(Demand, timevar = 'region', idvar = 'Period', direction = 'wide')
+Demand_wide <- pivot_wider(data = Demand, id_cols = "Period", 
+                               names_from = "region", values_from = "sum_sales")
 ```
 
 ## Aufgabe 3
 ```{r}
+ts_Japan = ts(Demand_wide$Japan, frequency = 12)
 
+ts_Peking = ts(Demand_wide$Peking, frequency = 12)
+ts_Phlppn = ts(Demand_wide$Phlppn, frequency = 12)
+ts_Shangh = ts(Demand_wide$Shangh, frequency = 12)
+ts_Skorea = ts(Demand_wide$Skorea, frequency = 12)
 ```
 
 # Modellierung vorbereiten
@@ -46,39 +80,112 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 ## Aufgabe 4
 
 ```{r}
-
+ggplot(data=Demand, aes(x=Period, y=sum_sales)) +
+  geom_line(aes(col = region))+
+  geom_line(data = filter(Demand, region == "Shangh"), size = 1, col="#0066CC")+
+  #geom_line(data = Demand$Shangh, wide=8)+
+  xlab("Periode") + 
+  ylab("Nachfrage")+
+  theme(panel.grid.major.x = element_line(color = "red", size = 0.3, linetype = 2))+
+  scale_x_continuous(breaks = seq(12, 60, by = 12))
 ```
-
 ## Aufgabe 5
-```{r}
 
-```
+Man kann an der Zeitreihe eine Sesonalität erkennen, es gibt einen jedoch keinen Trend.
+
 
 # Modellierung
 
 ## Aufgabe 6
 
 ```{r}
+# Modell automatisch erstellen lassen
+m_Shangh = ets(ts_Shangh, model = "ZZZ")
 
+# Ausgabe des Modells
+m_Shangh
 ```
+
+```{r}
+#Urspüngliche Zeitreihe
+m_Shangh$x
+
+#Residuen anzeigen
+m_Shangh$residuals
+```
+
  
 ## Aufgabe 7
 
 ```{r}
+# Die durchschnittliche Höhe der Originalwerte im Jahr 2020 
+mean(m_Shangh$x[25:36])
 
+# Die durchschnittliche Höhe der Modellwerte im Jahr 2020
+mean(m_Shangh$fitted[25:36])
 ```
 
 
 ## Aufgabe 8
 
 ```{r}
+# Nachfragevorhersage für ein weiteres Jahr der Variable m_Shangh (Exponentielles Glättungsmodell)
+fcast_Shangh = forecast(m_Shangh, 12)
 
+# Forecast ausgeben 
+fcast_Shangh
 ```
 
-## Aufgabe 9
+```{r}
+df_Shangh_orig = data.frame(
+  period = seq(1, length(fcast_Shangh$x), 1), 
+  demand = as.numeric(fcast_Shangh$x), 
+  group = rep("orig", length(fcast_Shangh$x)))
+
+# DataFrame erstellen
+df_Shangh_fcast = data.frame(
+  period = seq(1, length(fcast_Shangh$fitted)+length(fcast_Shangh$mean), 1), 
+  demand = c(as.numeric(fcast_Shangh$fitted), as.numeric(fcast_Shangh$mean)), 
+  group = rep("fcast", length(fcast_Shangh$fitted)+length(fcast_Shangh$mean)))
+
+df_Shangh = rbind(df_Shangh_orig, df_Shangh_fcast)
+```
 
 ```{r}
+ggplot(df_Shangh, aes(x = period, y = demand, ymin=10000, ymax=26000, colour = group)) + 
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Nachfrage")+
+  theme(panel.grid.major.x = element_line(color = "red", size = 0.3, linetype = 2))+
+  scale_x_continuous(breaks = seq(12, 60, by = 12))
+```
+## Aufgabe 9
+### Mean Forecast Error MFE
+```{r}
+# MFE
+mean(as.numeric(fcast_Shangh$x - fcast_Shangh$fitted))
+```
 
+### Mean absolute Error MAE
+
+```{r}
+# MAE
+mean(abs(as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)))
+```
+
+### Mean squared Error MSE
+ 
+```{r}
+# MSE
+mean((as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)^2))
+```
+
+### Mean Absolute Percentage Error MAPE
+
+```{r}
+# MAPE
+MAPE_Shangh <- mean(abs((as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)/as.numeric(fcast_Shangh$x))*100))
+MAPE_Shangh
 ```
 
 
@@ -90,27 +197,96 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 ## Aufgabe 11
 
 ```{r}
+m_ana_Shangh = ets(ts_Shangh, model = "ANA")
 
+# Ausgabe des Modells
+m_ana_Shangh
 ```
 
-## Aufgabe 12
 
 ```{r}
+# Nachfragevorhersage für ein weiteres Jahr der Variable m_Shangh (Exponentielles Glättungsmodell)
+fcast_Shangh1 = forecast(m_ana_Shangh, 12)
 
+# Forecast ausgeben 
+fcast_Shangh1
 ```
 
 
+### Mean absolute Error MAE
 
+```{r}
+# MAE
+mean(abs(as.numeric(fcast_Shangh1$x - fcast_Shangh1$fitted)))
+```
+Der MAE‐Wert liegt auch bei ungefähr 408, deswegen ist das 'ANA' Modell nicht besser als 'ZZZ' die Bewertung mit dem MAE-Wert.
+
+### Mean Absolute Percentage Error MAPE
+
+```{r}
+# MAPE
+mean(abs((as.numeric(fcast_Shangh1$x - fcast_Shangh1$fitted)/as.numeric(fcast_Shangh1$x))*100))
+```
+Bei andere Werte wie bei dem MAPE-Wert ändert sich die Leistung nicht.
+
+## Aufgabe 12
+```{r}
+# Modell automatisch erstellen lassen für Japan
+m_Japan = ets(ts_Japan, model = "ZZZ")
+# Nachfragevorhersage für ein weiteres Jahr der Variable m_Shangh (Exponentielles Glättungsmodell)
+fcast_Japan = forecast(m_Japan, 12)
+
+
+# Modell und Forecast für Peking
+m_Peking = ets(ts_Peking, model = "ZZZ")
+fcast_Peking = forecast(m_Peking, 12)
+
+# Modell und Forecast für Philippinen
+m_Phlppn = ets(ts_Phlppn, model = "ZZZ")
+fcast_Phlppn = forecast(m_Phlppn, 12)
+
+# Modell und Forecast für Südkorea
+m_Skorea = ets(ts_Skorea, model = "ZZZ")
+fcast_Skorea = forecast(m_Skorea, 12)
+```
+
+### Mean Absolute Percentage Error MAPE für die verschiendene Regionen
+
+```{r}
+# MAPE für Japan
+MAPE_Japan <- mean(abs((as.numeric(fcast_Japan$x - fcast_Japan$fitted)/as.numeric(fcast_Japan$x))*100))
+# MAPE für Peking
+MAPE_Peking <- mean(abs((as.numeric(fcast_Peking$x - fcast_Peking$fitted)/as.numeric(fcast_Peking$x))*100))
+# MAPE für Philippinen
+MAPE_Phlppn <- mean(abs((as.numeric(fcast_Phlppn$x - fcast_Phlppn$fitted)/as.numeric(fcast_Phlppn$x))*100))
+# MAPE für Südkorea
+MAPE_Skorea <- mean(abs((as.numeric(fcast_Skorea$x - fcast_Skorea$fitted)/as.numeric(fcast_Skorea$x))*100))
+```
+
+```{r}
+MAPE_table <- rbind(MAPE_Japan, MAPE_Peking, MAPE_Phlppn, MAPE_Skorea, MAPE_Shangh)
+MAPE_table %>% kable()
+```
+Japan und Südkorea haben den niedriegsten MAPE-Wert, laut den Bewertungsmaß sind diese die beste Modelle.
+
+# Abschluss
 ## Aufgabe 13
 
 ```{r}
+quart_2 <- sum(c(fcast_Japan$mean[4:6], fcast_Peking$mean[4:6], fcast_Phlppn$mean[4:6], fcast_Shangh$mean[4:6], fcast_Skorea$mean[4:6]))
+
+quart_2
 
 ```
-
-# Abschluss
 
 ## Aufgabe 14
 
 ```{r}
-
+fcast_Peking$x
+mean(fcast_Peking$x[1:4,7])
+fcast_Peking$x[55]
+fcast_Peking$mean[7]
 ```
+
+
+
