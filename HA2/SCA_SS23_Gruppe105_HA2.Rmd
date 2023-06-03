@@ -25,13 +25,16 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 
 ```{r}
 # Laden der Daten in die Dataframes 'cost', 'services', 'prices' und 'transactions'
+
 cost <- read.csv("../HA1/data/output_cost_8Players_v0020.csv", sep=";", dec=",")
 services <- read.csv("../HA1/data/output_services_8Players_v0020.csv", sep=";", dec=",")
 prices <- read.csv("../HA1/data/output_prices_8Players_v0020.csv", sep=";", dec=",")
 transactions <- read.csv("../HA1/data/output_transactions_8Players_v0020.csv", sep=";", dec=",")
 ```
 
+
 ```{r}
+#Aufbereiten der Daten
 year18_22 <- interval(ymd("2018-01-01"), ymd("2022-12-31"))
 
 cost$Date <- make_date(cost$Year, cost$Month)
@@ -46,6 +49,19 @@ services <- services[services$Date %within% year18_22, ]
 transactions$Date <- make_date(transactions$Year, transactions$Month, transactions$Day)
 transactions <- subset(transactions, select=-c(Year, Month, Day))
 transactions <- transactions[transactions$Date %within% year18_22, ]
+
+# Characters in Factors umwandeln
+cost$Product = as.factor(cost$Product)
+services$region = as.factor(services$region)
+services$storename = as.factor(services$storename)
+services$Product = as.factor(services$Product)
+services$vendor = as.factor(services$vendor)
+services$service = as.factor(services$service)
+prices$vendor = as.factor(prices$vendor)
+prices$service = as.factor(prices$service)
+transactions$region = as.factor(transactions$region)
+transactions$storename = as.factor(transactions$storename)
+transactions$Product = as.factor(transactions$Product)
 ```
 
 ## Aufgabe 1
