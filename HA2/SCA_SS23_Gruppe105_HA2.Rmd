@@ -192,6 +192,9 @@ ggplot(df_Shangh, aes(x = period, y = demand, ymin=10000, ymax=26000, colour = g
   theme(panel.grid.major.x = element_line(color = "red", size = 0.3, linetype = 2))+
   scale_x_continuous(breaks = seq(12, 60, by = 12))
 ```
+
+Im dargestellen Plot sehen wir den Nachfrageverlauf (Original in Blau) ab Periode 1 (Januar 2018) und die Modellvorhersage (in rot) ab Periode 1 sowie von der letzten Periode noch ein Jahr in die Zukunft fortgesetzt. In einem Linienchart lassen sich beide Kurven einfach miteinander vergleichen. sowie die Fortsetzung der Vorhersage im gleichen Plot mit darstellen.
+
 ## Aufgabe 9
 ### Mean Forecast Error MFE
 ```{r}
