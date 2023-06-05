@@ -136,16 +136,16 @@ m_Shangh = ets(ts_Shangh, model = "ZZZ")
 # Ausgabe des Modells
 m_Shangh
 ```
-
 ```{r}
 #Urspüngliche Zeitreihe
 m_Shangh$x
+```
 
+```{r}
 #Residuen anzeigen
 m_Shangh$residuals
 ```
 
- 
 ## Aufgabe 7
 
 ```{r}
@@ -156,6 +156,8 @@ mean(m_Shangh$x[25:36])
 mean(m_Shangh$fitted[25:36])
 ```
 
+Die Originalwerte liegen im Schnitt bei einer Nachfrage von ca. 17632 Flaschen, die Modellwerte bei ca. 17514, also leicht darunter.
+Bei einer Verwendung des Modells für das Jahr 2020 hätten wir die tatsächliche Nachfrage unterschätzt. Wenn wir entsprechend weniger produziert hätten (also nicht die Unsicherheit in der Analyse berücksichtigt und einen gewissen Sicherheitsbestand angelegt hätten), wäre die Nachfrage nicht bedienbar gewesen und wir hätten an erzielbarem Umsatz eingebüßt.
 
 ## Aufgabe 8
 
