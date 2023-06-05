@@ -316,15 +316,18 @@ quart_2 <- sum(c(fcast_Japan$mean[4:6], fcast_Peking$mean[4:6], fcast_Phlppn$mea
 quart_2
 
 ```
+Das Modell sagt für das zweite Quartal 2023 (Monate April, Mai, Juni) über alle fünf Regionen hinweg eine Nachfrage von ca. 254.134 Flaschen voraus. Die Anzahl benötigter Flaschen könnte davon abweichen, beispielsweise wenn wir uns dazu entscheiden, einen Sicherheitsbestand anzulegen.
 
 ## Aufgabe 14
 
 ```{r}
-fcast_Peking$x
+# Durchschnittl. Nachfrage in Peking im Juli 2018, Juli 2019, Juli 2020, Juli 2021.
 mean(fcast_Peking$x[seq(7, 43, 12)])
+
+# Nachfrage in Peking im Juli 2022
 fcast_Peking$x[55]
+
+# Vorhergesagte Nachfrage in Peking im Juli 2023
 fcast_Peking$mean[7]
 ```
-
-
-
+Frank hat Recht damit, dass im Juli in Peking üblicherweise mehr verkauft wurde (im Schnitt ca. 16531 Flaschen) als im Juli 2022 (nur 16407, also über 120 Flaschen weniger). Unser Modell sagt jedoch für den Juli 2023 wieder eine Nachfrage von ca. 16507 voraus, also fast wieder auf dem vorherigen Niveau.
