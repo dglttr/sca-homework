@@ -250,7 +250,6 @@ m_ana_Shangh = ets(ts_Shangh, model = "ANA")
 m_ana_Shangh
 ```
 
-
 ```{r}
 # Nachfragevorhersage für ein weiteres Jahr der Variable m_Shangh (Exponentielles Glättungsmodell)
 fcast_Shangh1 = forecast(m_ana_Shangh, 12)
@@ -259,22 +258,16 @@ fcast_Shangh1 = forecast(m_ana_Shangh, 12)
 fcast_Shangh1
 ```
 
-
-### Mean absolute Error MAE
-
 ```{r}
 # MAE
 mean(abs(as.numeric(fcast_Shangh1$x - fcast_Shangh1$fitted)))
 ```
-Der MAE‐Wert liegt auch bei ungefähr 408, deswegen ist das 'ANA' Modell nicht besser als 'ZZZ' die Bewertung mit dem MAE-Wert.
-
-### Mean Absolute Percentage Error MAPE
-
 ```{r}
 # MAPE
 mean(abs((as.numeric(fcast_Shangh1$x - fcast_Shangh1$fitted)/as.numeric(fcast_Shangh1$x))*100))
 ```
-Bei andere Werte wie bei dem MAPE-Wert ändert sich die Leistung nicht.
+Im neuen Modell "ANA" liegt sowohl MAE mit ca. 408,21 (vs. 408,71 beim alten Modell) als auch MAPE mit 2,1775 % (vs. 2,1812 %) etwas niedriger, also besser. Matthias hat also Recht, dass "ANA" besser performt als "MNA" (das von R gefundene optimale Modell, in dem der Fehler multiplikativ statt additiv eingeht). Die Abweichungen sind allerdings sehr gering.
+Grund für die Abweichungen ist, dass das forecast-Paket standardmäßig MSE minimiert, nicht MAE oder MAPE.
 
 ## Aufgabe 12
 ```{r}
