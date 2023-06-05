@@ -220,8 +220,8 @@ MAPE_Shangh
 ```
 Die mittlere absolute prozentuale Abweichung beträgt ca. 2,18 %.
 
-Die verschiedenen Kennzahlen treffen unterschiedliche Aussagen über unser Modell. MFE berücksichtigt nicht das Vorzeichen des Fehlers und lässt damit kaum Aussagen über die Güte des Modells zu (große positive und große negative Abweichungen könnten sich ausgleichen). Der Wert von -13,7 zeigt uns jedoch, dass das Modell im Schnitt die Nachfrage eher unterschätzt (siehe auch Aufgabe 7). MSE ist ohne Anwendung der Wurzelfunktion erstmal in einer unpassenden Einheit und gewichtet Ausreißer, also besonders große Abweichungen, höher. Das kann für manche Problemstellungen sehr relevant sein, hier konzentrieren wir uns aber auf MAE, welcher uns eine Kennzahl in einer direkt nützlichen Einheit liefert. Darüber hinaus liefert uns MAPE eine prozentuale Kennzahl unabhängig von der Größenordnung der Nachfrage.
-Zur Bewertung der Güte unseres Modells eignen sich also vor allem MAE und MAPE. 
+Die verschiedenen Kennzahlen treffen unterschiedliche Aussagen über unser Modell. MFE berücksichtigt nicht das Vorzeichen des Fehlers und lässt damit kaum Aussagen über die Güte des Modells zu (große positive und große negative Abweichungen könnten sich ausgleichen). Der Wert von -13,7 zeigt uns jedoch, dass das Modell im Schnitt die Nachfrage eher unterschätzt (siehe auch Aufgabe 7). MSE ist ohne Anwendung der Wurzelfunktion erstmal in einer unpassenden Einheit und gewichtet Ausreißer, also besonders große Abweichungen, höher. Das kann für manche Problemstellungen sehr relevant sein, hier konzentrieren wir uns aber auf MAE, welcher uns eine Kennzahl in einer direkt nützlichen Einheit liefert. Darüber hinaus liefert uns MAPE eine prozentuale Kennzahl unabhängig von der Größenordnung der Nachfrage, was besonders dann nützlich ist, wenn sich die Größenordnung der Nachfrage in verschiedenen Regionen sehr stark unterscheidet.
+Zur Bewertung der Güte unseres Modells eignen sich also vor allem MAE und MAPE. MAE 
 
 ## Aufgabe 10
 Wir hatten vermutet, dass die Nachfrage saisonal schwankt und kein Trend vorliegt.
