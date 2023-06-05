@@ -120,7 +120,9 @@ ggplot(data=Demand, aes(x=Period, y=sum_sales)) +
 ```
 ## Aufgabe 5
 
-Man kann an der Zeitreihe eine Sesonalität erkennen, es gibt einen jedoch keinen Trend.
+Man kann an der Zeitreihe für die Region Shanghai eine Saisonalität erkennen, es lässt sich jedoch kein Trend ausmachen.
+Da der Verlauf nicht rein stochastisch ist, ist die Zeitreihenanalyse eine sinnvolle Methode zur Vorhersage der Nachfrage. Wir sollten allerdings von einfachen Methoden wie einem simplen Moving Average-Verfahren absehen, da dies Saisonalität nicht aufreichend berücksichtigen kann. Stattdessen bietet sich das Holt-Winter-Modell für die Saison-korrigierte exponentielle Glättung an.
+Eine wichtige Annahme zur erfolgreichen Anwendung dieses Modells zur Nachfragevorhersage ist, dass sich die Nachfrage auch in Zukunft so entwickelt wie bislang, dass also keine signifikanten Änderungen der Saisonalität oder Entstehung von Trends auftreten.
 
 
 # Modellierung
