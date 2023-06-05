@@ -196,11 +196,14 @@ ggplot(df_Shangh, aes(x = period, y = demand, ymin=10000, ymax=26000, colour = g
 Im dargestellen Plot sehen wir den Nachfrageverlauf (Original in Blau) ab Periode 1 (Januar 2018) und die Modellvorhersage (in rot) ab Periode 1 sowie von der letzten Periode noch ein Jahr in die Zukunft fortgesetzt. In einem Linienchart lassen sich beide Kurven einfach miteinander vergleichen. sowie die Fortsetzung der Vorhersage im gleichen Plot mit darstellen.
 
 ## Aufgabe 9
+Wir bewerten unser Modell mithilfe von vier wichtigen Kennzahlen: MFE, MAE, MSE und MAPE.
+
 ### Mean Forecast Error MFE
 ```{r}
 # MFE
 mean(as.numeric(fcast_Shangh$x - fcast_Shangh$fitted))
 ```
+Der mittlere Vorhersagefehler beträgt ca. -13,7 [Flaschen].
 
 ### Mean absolute Error MAE
 
@@ -208,13 +211,15 @@ mean(as.numeric(fcast_Shangh$x - fcast_Shangh$fitted))
 # MAE
 mean(abs(as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)))
 ```
+Der mittlere absolute Vorhersagefehler beträgt ca. 409 [Flaschen].
 
-### Mean squared Error MSE
+### Mean Squared Error MSE
  
 ```{r}
 # MSE
 mean((as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)^2))
 ```
+Der mittlere quadrtierte Fehler beträgt ca. 357.221 und ist in der Einheit Flaschen², also hier nicht direkt, sondern nur im Vergleich mit anderen Modellen interpretierbar. Über die Wurzel könnten wir den RMSE (Root Mean Squared Error) erhalten (beträgt hier ca. 598 [Flaschen]), der Ausreißer stärker gewichtet als der MAE.
 
 ### Mean Absolute Percentage Error MAPE
 
@@ -223,7 +228,10 @@ mean((as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)^2))
 MAPE_Shangh <- mean(abs((as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)/as.numeric(fcast_Shangh$x))*100))
 MAPE_Shangh
 ```
+Die mittlere absolute prozentuale Abweichung beträgt ca. 2,18 %.
 
+Die verschiedenen Kennzahlen treffen unterschiedliche Aussagen über unser Modell. MFE berücksichtigt nicht das Vorzeichen des Fehlers und lässt damit kaum Aussagen über die Güte des Modells zu (große positive und große negative Abweichungen könnten sich ausgleichen). Der Wert von -13,7 zeigt uns jedoch, dass das Modell im Schnitt die Nachfrage eher unterschätzt (siehe auch Aufgabe 7). MSE ist ohne Anwendung der Wurzelfunktion erstmal in einer unpassenden Einheit und gewichtet Ausreißer, also besonders große Abweichungen, höher. Das kann für manche Problemstellungen sehr relevant sein, hier konzentrieren wir uns aber auf MAE, welcher uns eine Kennzahl in einer direkt nützlichen Einheit liefert. Darüber hinaus liefert uns MAPE eine prozentuale Kennzahl unabhängig von der Größenordnung der Nachfrage.
+Zur Bewertung der Güte unseres Modells eignen sich also vor allem MAE und MAPE. 
 
 ## Aufgabe 10
 ```{r}
