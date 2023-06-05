@@ -67,28 +67,41 @@ transactions$Product = as.factor(transactions$Product)
 ## Aufgabe 1
 
 ```{r}
-Demand <- transactions %>% arrange(Date) %>%  group_by(month = floor_date(Date, 'month'), region) %>% summarise(sum_sales= sum(Sales))
-Demand <- Demand %>% mutate(Period = cur_group_id()) %>% subset(select = -c(month))
-head(Demand) %>%  kable()
-#Demand[order(Demand$region), ]
+# Daten nach Monat zusammenfassen
+Demand <- transactions %>%
+    arrange(Date) %>% 
+    group_by(month = floor_date(Date, 'month'), region) %>%
+  summarise(sum_sales= sum(Sales))
+
+# Variable 'Period' definieren
+Demand <- Demand %>%
+  mutate(Period = cur_group_id()) %>%
+  subset(select = -c(month))
+
+head(Demand) %>% kable()
+
 ```
 
 ## Aufgabe 2
 
 ```{r}
-#reshape(Demand, timevar = 'region', idvar = 'Period', direction = 'wide')
-Demand_wide <- pivot_wider(data = Demand, id_cols = "Period", 
-                               names_from = "region", values_from = "sum_sales")
+# reshape() funktioniert nicht mit dem groupby() aus dem Tidyverse-Paket. Wir verwenden daher stattdessen die im Paket integrierte pivot_wider() Funktion.
+# Die Syntax für die reshape() Funktion wäre hier:
+# reshape(Demand, timevar = 'region', idvar = 'Period', direction = 'wide')
+
+Demand_wide <- pivot_wider(data = Demand, id_cols = "Period", names_from = "region", values_from = "sum_sales", names_prefix = "Demand in ")
+
+head(Demand_wide)
 ```
 
 ## Aufgabe 3
 ```{r}
-ts_Japan = ts(Demand_wide$Japan, frequency = 12)
+ts_Japan = ts(Demand_wide$`Demand in Japan`, frequency = 12)
 
-ts_Peking = ts(Demand_wide$Peking, frequency = 12)
-ts_Phlppn = ts(Demand_wide$Phlppn, frequency = 12)
-ts_Shangh = ts(Demand_wide$Shangh, frequency = 12)
-ts_Skorea = ts(Demand_wide$Skorea, frequency = 12)
+ts_Peking = ts(Demand_wide$`Demand in Peking`, frequency = 12)
+ts_Phlppn = ts(Demand_wide$`Demand in Phlppn`, frequency = 12)
+ts_Shangh = ts(Demand_wide$`Demand in Shangh`, frequency = 12)
+ts_Skorea = ts(Demand_wide$`Demand in Skorea`, frequency = 12)
 ```
 
 # Modellierung vorbereiten
