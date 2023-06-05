@@ -234,9 +234,12 @@ Die verschiedenen Kennzahlen treffen unterschiedliche Aussagen über unser Model
 Zur Bewertung der Güte unseres Modells eignen sich also vor allem MAE und MAPE. 
 
 ## Aufgabe 10
-```{r}
+Wir hatten vermutet, dass die Nachfrage saisonal schwankt und kein Trend vorliegt.
+Das gefundene Modell liefert uns die Parameter:
+  alpha = 3e-04 
+  gamma = 1e-04 
 
-```
+Alpha ist der Parameter für die exponentielle Glättung, Gamma für die Saisonalität, die hier durch das Modell identifiziert wurde. Der Parameter Beta fehlt allerdings (bzw. ist 0), das Modell hat also wie vermutet keinen Trend ausfindig gemacht.
 
 ## Aufgabe 11
 
