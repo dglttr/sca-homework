@@ -219,7 +219,7 @@ Der mittlere absolute Vorhersagefehler beträgt ca. 409 [Flaschen].
 # MSE
 mean((as.numeric(fcast_Shangh$x - fcast_Shangh$fitted)^2))
 ```
-Der mittlere quadrtierte Fehler beträgt ca. 357.221 und ist in der Einheit Flaschen², also hier nicht direkt, sondern nur im Vergleich mit anderen Modellen interpretierbar. Über die Wurzel könnten wir den RMSE (Root Mean Squared Error) erhalten (beträgt hier ca. 598 [Flaschen]), der Ausreißer stärker gewichtet als der MAE.
+Der mittlere quadrtierte Fehler beträgt ca. 357.221 und ist in der Einheit Flaschen², also hier nicht direkt, sondern nur im Vergleich mit anderen, auf den gleichen Daten trainierten Modellen interpretierbar. Über die Wurzel könnten wir den RMSE (Root Mean Squared Error) erhalten (beträgt hier ca. 598 [Flaschen]), der Ausreißer stärker gewichtet als der MAE.
 
 ### Mean Absolute Percentage Error MAPE
 
@@ -276,7 +276,6 @@ m_Japan = ets(ts_Japan, model = "ZZZ")
 # Nachfragevorhersage für ein weiteres Jahr der Variable m_Shangh (Exponentielles Glättungsmodell)
 fcast_Japan = forecast(m_Japan, 12)
 
-
 # Modell und Forecast für Peking
 m_Peking = ets(ts_Peking, model = "ZZZ")
 fcast_Peking = forecast(m_Peking, 12)
@@ -290,7 +289,7 @@ m_Skorea = ets(ts_Skorea, model = "ZZZ")
 fcast_Skorea = forecast(m_Skorea, 12)
 ```
 
-### Mean Absolute Percentage Error MAPE für die verschiendene Regionen
+### Mean Absolute Percentage Error (MAPE) für die verschiendene Regionen
 
 ```{r}
 # MAPE für Japan
@@ -301,13 +300,12 @@ MAPE_Peking <- mean(abs((as.numeric(fcast_Peking$x - fcast_Peking$fitted)/as.num
 MAPE_Phlppn <- mean(abs((as.numeric(fcast_Phlppn$x - fcast_Phlppn$fitted)/as.numeric(fcast_Phlppn$x))*100))
 # MAPE für Südkorea
 MAPE_Skorea <- mean(abs((as.numeric(fcast_Skorea$x - fcast_Skorea$fitted)/as.numeric(fcast_Skorea$x))*100))
-```
 
-```{r}
-MAPE_table <- rbind(MAPE_Japan, MAPE_Peking, MAPE_Phlppn, MAPE_Skorea, MAPE_Shangh)
+MAPE_table <- data.frame(MAPE=rbind(MAPE_Japan, MAPE_Peking, MAPE_Phlppn, MAPE_Skorea, MAPE_Shangh), row.names=c("Japan", "Peking", "Phlppn", "Skorea", "Shangh"))
+
 MAPE_table %>% kable()
 ```
-Japan und Südkorea haben den niedriegsten MAPE-Wert, laut den Bewertungsmaß sind diese die beste Modelle.
+Japan und Südkorea haben den niedrigsten MAPE-Wert, laut dem Bewertungsmaß sind diese die "besten" Modelle. Allerdings sind die Modelle nur bedingt vergleichbar, da sie jeweils auf unterschiedlichen Daten trainiert wurden. Ggf. ist etwa die Nachfrage in Shanghai stochastischer als in Japan, also prinzipiell schwieriger vorherzusagen. Wir können aber daraus folgern, dass wir uns in Japan oder Südkorea eher auf das Vorhersagemodell verlassen würden als beispielsweise in Shanghai oder den Philippinen.
 
 # Abschluss
 ## Aufgabe 13
