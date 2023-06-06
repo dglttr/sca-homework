@@ -68,10 +68,10 @@ transactions$Product = as.factor(transactions$Product)
 Demand <- transactions %>%
     arrange(Date) %>% 
     # Periodenspalte mit Datentyp yearmon aus dem Zoo package für monatliche Daten
-    group_by(Period = as.yearmon(Date), region) %>% 
-  summarise(sum_sales= sum(Sales))
+    group_by(region, Period = as.yearmon(Date)) %>% 
+  summarise(Demand = sum(Sales))
 
-head(Demand) %>% kable()
+head(Demand) %>% kable(caption='Verkaufszahlen aggregiert nach Region und Periode (Monat/Jahr)')
 ```
 
 ## Aufgabe 2
@@ -81,9 +81,9 @@ head(Demand) %>% kable()
 # Die Syntax für die reshape() Funktion wäre hier:
 # reshape(Demand, timevar = 'region', idvar = 'Period', direction = 'wide')
 
-Demand_wide <- pivot_wider(data = Demand, id_cols = "Period", names_from = "region", values_from = "sum_sales", names_prefix = "Demand in ")
+Demand_wide <- pivot_wider(data = Demand, id_cols = "Period", names_from = "region", values_from = "Demand", names_prefix = "Demand in ")
 
-head(Demand_wide)
+head(Demand_wide) %>% kable(caption='Verkaufszahlen aggregiert nach Region und Periode, umgewandelt in das Wide-Format')
 ```
 
 ## Aufgabe 3
@@ -101,7 +101,7 @@ ts_Skorea = ts(Demand_wide$`Demand in Skorea`, frequency = 12)
 ## Aufgabe 4
 
 ```{r}
-ggplot(data=Demand, aes(x=Period, y=sum_sales)) +
+ggplot(data=Demand, aes(x=Period, y=Demand)) +
   geom_line(aes(col = region)) +
   geom_line(data = filter(Demand, region == "Shangh"), size = 1, col="#0066CC") +
   xlab("Periode") + 
@@ -109,6 +109,7 @@ ggplot(data=Demand, aes(x=Period, y=sum_sales)) +
   theme(panel.grid.major.x = element_line(color = "red", size = 0.3, linetype = 2)) +
   scale_x_continuous(breaks = seq(12, 60, by = 12))
 ```
+
 ## Aufgabe 5
 
 Man kann an der Zeitreihe für die Region Shanghai eine Saisonalität erkennen, es lässt sich jedoch kein Trend ausmachen.
@@ -220,9 +221,7 @@ Zur Bewertung der Güte unseres Modells eignen sich also vor allem MAE und MAPE.
 
 ## Aufgabe 10
 Wir hatten vermutet, dass die Nachfrage saisonal schwankt und kein Trend vorliegt.
-Das gefundene Modell liefert uns die Parameter:
-  alpha = 3e-04 
-  gamma = 1e-04 
+Das gefundene Modell liefert uns die Parameter alpha = 3e-04 und gamma = 1e-04.
 
 Alpha ist der Parameter für die exponentielle Glättung, Gamma für die Saisonalität, die hier durch das Modell identifiziert wurde. Der Parameter Beta fehlt allerdings (bzw. ist 0), das Modell hat also wie vermutet keinen Trend ausfindig gemacht.
 
@@ -273,11 +272,7 @@ fcast_Phlppn = forecast(m_Phlppn, 12)
 # Modell und Forecast für Südkorea
 m_Skorea = ets(ts_Skorea, model = "ZZZ")
 fcast_Skorea = forecast(m_Skorea, 12)
-```
 
-### Mean Absolute Percentage Error (MAPE) für die verschiendene Regionen
-
-```{r}
 # MAPE für Japan
 MAPE_Japan <- mean(abs((as.numeric(fcast_Japan$x - fcast_Japan$fitted)/as.numeric(fcast_Japan$x))*100))
 # MAPE für Peking
@@ -289,7 +284,7 @@ MAPE_Skorea <- mean(abs((as.numeric(fcast_Skorea$x - fcast_Skorea$fitted)/as.num
 
 MAPE_table <- data.frame(MAPE=rbind(MAPE_Japan, MAPE_Peking, MAPE_Phlppn, MAPE_Skorea, MAPE_Shangh), row.names=c("Japan", "Peking", "Phlppn", "Skorea", "Shangh"))
 
-MAPE_table %>% kable()
+MAPE_table %>% kable(caption='Mean Absolute Percentage Error (MAPE) für die verschiendene Regionen', digits=2)
 ```
 Japan und Südkorea haben den niedrigsten MAPE-Wert, laut dem Bewertungsmaß sind diese die "besten" Modelle. Allerdings sind die Modelle nur bedingt vergleichbar, da sie jeweils auf unterschiedlichen Daten trainiert wurden. Ggf. ist etwa die Nachfrage in Shanghai stochastischer als in Japan, also prinzipiell schwieriger vorherzusagen. Wir können aber daraus folgern, dass wir uns in Japan oder Südkorea eher auf das Vorhersagemodell verlassen würden als beispielsweise in Shanghai oder den Philippinen.
 
