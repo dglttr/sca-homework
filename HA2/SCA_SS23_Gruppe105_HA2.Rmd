@@ -67,16 +67,11 @@ transactions$Product = as.factor(transactions$Product)
 # Daten nach Monat zusammenfassen
 Demand <- transactions %>%
     arrange(Date) %>% 
-    group_by(month = floor_date(Date, 'month'), region) %>%
+    # Periodenspalte mit Datentyp yearmon aus dem Zoo package für monatliche Daten
+    group_by(Period = as.yearmon(Date), region) %>% 
   summarise(sum_sales= sum(Sales))
 
-# Variable 'Period' definieren
-Demand <- Demand %>%
-  mutate(Period = cur_group_id()) %>%
-  subset(select = -c(month))
-
 head(Demand) %>% kable()
-
 ```
 
 ## Aufgabe 2
