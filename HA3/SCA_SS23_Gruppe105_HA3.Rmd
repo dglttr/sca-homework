@@ -96,10 +96,11 @@ ldl_ifr_warehousing %>%
   group_by(Logistikdienstleister) %>%
   summarize(IFR=mean(IFR)) %>%
   arrange(desc(IFR)) %>%
-  kable(caption="LDL nach IFR, über Regionen und Perioden hinweg", digits=3)
+  head(1) %>%
+  kable(caption="Bester LDL nach IFR, über Regionen und Perioden hinweg", digits=3)
 ```
 
-Der insgesamt beste LDL über die Regionen und Perioden hinweg ist Flying Mercury Warehousing mit einer IFR von 83,7%.
+Der insgesamt beste LDL über alle Regionen und Perioden hinweg ist Flying Mercury Warehousing mit einer IFR von 83,7%.
 
 ```{r}
 # Schlechtester IFR‐Wert (und Periode) dieses LDL
@@ -107,16 +108,37 @@ ldl_ifr_warehousing %>%
   filter(Logistikdienstleister == "Flying Mercury Warehousing") %>%
   filter(Region == "Shangh") %>%
   arrange(IFR) %>%
-  kable(caption="Aufsteigend sortierte IFR-Werte von Flying Mercury Warehousing in der Region Shanghai", digits=3)
+  head(1) %>%
+  kable(caption="Schlechtester IFR-Wert und Periode von Flying Mercury Warehousing in der Region Shanghai", digits=3)
 ```
 
-Der schlechteste IFR-Wert von Flying Mercury Warehousing in der Region Shanghai beträgt 78,4% und war in der Periode 202205 (Mai 2022).
+Der schlechteste IFR-Wert von Flying Mercury Warehousing in der Region Shanghai beträgt 78,4% und war im Mai 2022.
 
 ## Aufgabe 3
 
 ```{r}
+# Daten nach Monat zusammenfassen
+ldl_ifr_shipping <- services %>%
+  filter(service == "Shipping") %>%
+  group_by(Logistikdienstleister=vendor, Region=region, Periode=Period) %>%
+  summarize(OTD = mean(OTD)) %>%
+  # Sortieren nach OTD Rate
+  arrange(OTD)
 
+ldl_ifr_shipping %>% kable(caption='On-Time Delivery Rate der Shipping-LDL nach Region und Periode', digits=3)
 ```
+
+```{r}
+# Schlechtester OTD‐Wert in Japan im April 2019
+ldl_ifr_shipping %>%
+  filter(Periode == "201904") %>%
+  filter(Region == "Japan") %>%
+  arrange(OTD) %>%
+  head(1) %>%
+  kable(caption="Aufsteigend sortierte OTD-Werte von LDL in der Region Japan im April 2019", digits=3)
+```
+
+Der schlechteste OTD-Wert eines Shipping-LDL in der Region Japan im April 2019 beträgt 7.1%. Betroffen ist der Dienstleister CPS Shipping.
 
 
 # Modellierung: Warehousing
