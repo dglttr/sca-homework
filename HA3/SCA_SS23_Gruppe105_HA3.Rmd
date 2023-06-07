@@ -169,7 +169,7 @@ correlations_IFR <- data.frame(IFR=t(correlations_IFR)) %>%
 
 # Ausgabe
 correlations_IFR %>%
-  kable(caption="Korrelation aller Variable zur In-Full Rate", digits=4)
+  kable(caption="Korrelation aller Variablen zur In-Full Rate", digits=4)
 ```
 
 ```{r}
@@ -191,8 +191,13 @@ ggpairs(subset(cps_warehousing, select=strongest_five_effects),
 ## Aufgabe 6
 
 ```{r}
+cps_warehousing$Baseline <- mean(cps_warehousing$IFR)
 
+head(cps_warehousing[, c("Period", "region", "IFR", "Baseline")]) %>%
+  kable(caption="Tabellenkopf für LDL CPS Warehousing mit Baseline", digits=4)
 ```
+
+Eine sehr einfache Baseline stellt der Mittelwert der vorherzusagenden Variable (IFR) dar. Dieser ist leicht zu berechnen und liegt per Definition "im Schnitt richtig". Natürlich kann der Mittelwert allerdings keine Nuancen basierend auf den anderen verfügbaren externen Informationen aufgreifen.
 
 ## Aufgabe 7
 
