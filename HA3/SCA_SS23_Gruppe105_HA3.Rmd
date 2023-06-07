@@ -18,6 +18,7 @@ library(zoo)
 library(scales)
 library(ggplot2)
 library(knitr)
+library(GGally)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
@@ -83,7 +84,7 @@ ldl_ifr %>% kable(caption="Logistikdienstleister nach In-Full Rate", digits=3)
 # Daten nach Monat zusammenfassen
 ldl_ifr_warehousing <- services %>%
   filter(service == "Warehousing") %>%
-  group_by(Logistikdienstleister=vendor, Region=region, Periode=Period) %>%
+  group_by(Logistikdienstleister=vendor, region, Period) %>%
   summarize(IFR = mean(IFR)) %>%
   arrange(IFR)
 
@@ -106,7 +107,7 @@ Der insgesamt beste LDL über alle Regionen und Perioden hinweg ist Flying Mercu
 # Schlechtester IFR‐Wert (und Periode) dieses LDL
 ldl_ifr_warehousing %>%
   filter(Logistikdienstleister == "Flying Mercury Warehousing") %>%
-  filter(Region == "Shangh") %>%
+  filter(region == "Shangh") %>%
   arrange(IFR) %>%
   head(1) %>%
   kable(caption="Schlechtester IFR-Wert und Periode von Flying Mercury Warehousing in der Region Shanghai", digits=3)
@@ -120,7 +121,7 @@ Der schlechteste IFR-Wert von Flying Mercury Warehousing in der Region Shanghai 
 # Daten nach Monat zusammenfassen
 ldl_ifr_shipping <- services %>%
   filter(service == "Shipping") %>%
-  group_by(Logistikdienstleister=vendor, Region=region, Periode=Period) %>%
+  group_by(Logistikdienstleister=vendor, region, Period=Period) %>%
   summarize(OTD = mean(OTD)) %>%
   # Sortieren nach OTD Rate
   arrange(OTD)
@@ -132,7 +133,7 @@ ldl_ifr_shipping %>% kable(caption='On-Time Delivery Rate der Shipping-LDL nach 
 # Schlechtester OTD‐Wert in Japan im April 2019
 ldl_ifr_shipping %>%
   filter(Periode == "201904") %>%
-  filter(Region == "Japan") %>%
+  filter(region == "Japan") %>%
   arrange(OTD) %>%
   head(1) %>%
   kable(caption="Aufsteigend sortierte OTD-Werte von LDL in der Region Japan im April 2019", digits=3)
@@ -146,13 +147,45 @@ Der schlechteste OTD-Wert eines Shipping-LDL in der Region Japan im April 2019 b
 ## Aufgabe 4
 
 ```{r}
+cps_warehousing <- merge(subset(ldl_ifr_warehousing, Logistikdienstleister == "CPS Warehousing"),
+                             externals,
+                             by=c("Period", "region"))
 
+# Index X aus Externals-Teil löschen
+cps_warehousing <- subset(cps_warehousing, select=-c(X))
+
+head(cps_warehousing) %>% kable(caption="IFR Rate sowie externe Einflussfaktoren von CPS Warehousing nach Region und Periode")
 ```
 
 ## Aufgabe 5
 
 ```{r}
+# a) Externe Effekte und Korrelation zur IFR
+correlations_IFR <- cor(cps_warehousing$IFR, cps_warehousing[, 4:ncol(cps_warehousing)])
 
+# Besser lesbarer Output und Sortierung nach Stärke der Korrelation
+correlations_IFR <- data.frame(IFR=t(correlations_IFR)) %>%
+  arrange(desc(abs(IFR)))
+
+# Ausgabe
+correlations_IFR %>%
+  kable(caption="Korrelation aller Variable zur In-Full Rate", digits=4)
+```
+
+```{r}
+# b) Die 5 am stärksten korrelierenden Effekte und ihre Korrelationen
+# 5 stärkste Effekte (neben IFR selbst); 'correlations_IFR' ist schon nach Korrelation sortiert
+strongest_five_effects <- rownames(head(correlations_IFR, 6))
+
+cor(subset(cps_warehousing, select=strongest_five_effects)) %>%
+  kable(caption="IFR und die 5 stärksten Effekte darauf", digits=4)
+```
+
+```{r}
+# c) Korrelations-Plot für die 5 stärksten Effekte
+ggpairs(subset(cps_warehousing, select=strongest_five_effects),
+        progress = FALSE,
+        lower = list(continuous = wrap("smooth_loess", colour = "steelblue1")))
 ```
 
 ## Aufgabe 6
