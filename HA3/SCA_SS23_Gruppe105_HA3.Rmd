@@ -248,9 +248,24 @@ evaluation %>% kable(caption="Bewertung der Baseline nach MAE und MAPE", digits=
 ## Aufgabe 9
 
 ```{r}
+# Seed setzen
+set.seed(4141)
 
+# 80% der Daten für Trainingsset samplen
+training_sample_indices <- sample(1:nrow(cps_warehousing), nrow(cps_warehousing) * 0.8)
+
+# Trainingsset
+training_data <- cps_warehousing[training_sample_indices, ]
+head(training_data) %>%
+  kable(caption="Trainingsdaten")
 ```
 
+```{r}
+# Testset
+test_data <- cps_warehousing[-training_sample_indices, ]
+head(test_data) %>%
+  kable(caption="Testdaten")
+```
 ## Aufgabe 10
 
 ```{r}
