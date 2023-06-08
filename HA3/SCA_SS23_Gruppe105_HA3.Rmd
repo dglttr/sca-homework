@@ -35,7 +35,7 @@ services <- read.csv("../HA1/data/output_services_8Players_v0020.csv", sep=";", 
 externals$region <- as.factor(externals$region)
 
 # Periode anpassen
-externals$Period <- format(make_date(year=externals$Year, month = externals$Month), "%Y%m")
+externals$Period <- as.yearmon(make_date(year=externals$Year, month = externals$Month))
 externals <-subset(externals, select=-c(Year, Month))
 
 # Tabelle Services aufbereiten
@@ -51,7 +51,7 @@ services$vendor = as.factor(services$vendor)
 services$service = as.factor(services$service)
 
 # Periode hinzufügen
-services$Period <- format(services$Date, "%Y%m")
+services$Period <- as.yearmon(services$Date)
 
 # OTD, IFR berechnen
 services$IFR <- services$QExecuted / services$QScheduled
@@ -64,7 +64,6 @@ ldl_otd <- services %>%
   arrange(OTD)
 
 ldl_otd %>% kable(caption="Logistikdienstleister nach On-Time Delivery Rate", digits=3)
-
 ```
 
 ```{r}
@@ -132,7 +131,7 @@ ldl_ifr_shipping %>% kable(caption='On-Time Delivery Rate der Shipping-LDL nach 
 ```{r}
 # Schlechtester OTD‐Wert in Japan im April 2019
 ldl_ifr_shipping %>%
-  filter(Periode == "201904") %>%
+  filter(Period == "Apr 2019") %>%
   filter(region == "Japan") %>%
   arrange(OTD) %>%
   head(1) %>%
@@ -147,7 +146,7 @@ Der schlechteste OTD-Wert eines Shipping-LDL in der Region Japan im April 2019 b
 ## Aufgabe 4
 
 ```{r}
-cps_warehousing <- merge(subset(ldl_ifr_warehousing, Logistikdienstleister == "CPS Warehousing"),
+cps_warehousing <- right_join(subset(ldl_ifr_warehousing, Logistikdienstleister == "CPS Warehousing"),
                              externals,
                              by=c("Period", "region"))
 
@@ -191,7 +190,7 @@ ggpairs(subset(cps_warehousing, select=strongest_five_effects),
 ## Aufgabe 6
 
 ```{r}
-cps_warehousing$Baseline <- mean(cps_warehousing$IFR)
+cps_warehousing$Baseline <- mean(cps_warehousing$IFR, na.rm=TRUE)
 
 head(cps_warehousing[, c("Period", "region", "IFR", "Baseline")]) %>%
   kable(caption="Tabellenkopf für LDL CPS Warehousing mit Baseline", digits=4)
@@ -202,6 +201,18 @@ Eine sehr einfache Baseline stellt der Mittelwert der vorherzusagenden Variable 
 ## Aufgabe 7
 
 ```{r}
+ggplot() +
+  # Baseline
+  geom_line(data=filter(cps_warehousing, year(Period) <= 2022), aes(x=Period, y=Baseline, color="Baseline")) +
+  # IFR Japan
+  geom_line(data = filter(cps_warehousing, year(Period) <= 2022 & region == "Japan"), aes(x=Period, y=IFR, color="Japan")) +
+  # IFR Peking
+  geom_line(data = filter(cps_warehousing, year(Period) <= 2022 & region == "Peking"), aes(x=Period, y=IFR, color="Peking")) +
+  xlab("Periode") + 
+  ylab("IFR") +
+  scale_color_manual(name='IFR',
+                     breaks=c('Baseline', 'Japan', 'Peking'),
+                     values=c('Baseline'='darkgreen', 'Japan'='blue', 'Peking'='red'))
 
 ```
 
@@ -209,13 +220,30 @@ Eine sehr einfache Baseline stellt der Mittelwert der vorherzusagenden Variable 
 ## Aufgabe 8
 
 ```{r}
+# Data Frame 'Evaluation' erstellen
+evaluation <- data.frame(Model = "Baseline",
+                        MAE = numeric(1),
+                        MAPE = numeric(1),
+                        Rsquared = numeric(1),
+                        Rsquared_adj = numeric(1))
 
+# MAE berechnen
+# NA müssen entfernt werden, weil externe Effekte von 2023 in den Daten vorhanden sind
+evaluation[evaluation$Model == "Baseline",]$MAE = mean(abs(cps_warehousing$IFR - cps_warehousing$Baseline), na.rm=TRUE)
+
+# MAPE berechnen (SMAPE nicht benötigt, weil IFR immer >0)
+# NA müssen entfernt werden, weil externe Effekte von 2023 in den Daten vorhanden sind
+evaluation[evaluation$Model == "Baseline",]$MAPE = mean(abs((as.numeric(cps_warehousing$IFR - cps_warehousing$Baseline)/as.numeric(cps_warehousing$IFR))*100), na.rm=TRUE)
+
+# R² berechnen
+evaluation[evaluation$Model == "Baseline",]$Rsquared = NA
+
+# Adjusted R² berechnen
+evaluation[evaluation$Model == "Baseline",]$Rsquared_adj = NA
+
+# Tabelle anzeigen
+evaluation %>% kable(caption="Bewertung der Baseline nach MAE und MAPE", digits=3)
 ```
-
-```{r}
-
-```
-
 
 ## Aufgabe 9
 
