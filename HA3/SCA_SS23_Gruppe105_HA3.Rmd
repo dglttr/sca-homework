@@ -228,11 +228,9 @@ evaluation <- data.frame(Model = "Baseline",
                         Rsquared_adj = numeric(1))
 
 # MAE berechnen
-# NA müssen entfernt werden, weil externe Effekte von 2023 in den Daten vorhanden sind
 evaluation[evaluation$Model == "Baseline",]$MAE = mean(abs(cps_warehousing$IFR - cps_warehousing$Baseline))
 
 # MAPE berechnen (SMAPE nicht benötigt, weil IFR immer >0)
-# NA müssen entfernt werden, weil externe Effekte von 2023 in den Daten vorhanden sind
 evaluation[evaluation$Model == "Baseline",]$MAPE = mean(abs((as.numeric(cps_warehousing$IFR - cps_warehousing$Baseline)/as.numeric(cps_warehousing$IFR))*100))
 
 # R² berechnen
@@ -267,21 +265,209 @@ head(test_data) %>%
   kable(caption="Testdaten")
 ```
 ## Aufgabe 10
+### Iteration 1: Univariate Modelle
+```{r}
+# Modelle erstellen
+model1 = lm(IFR ~ SkilledLaborAvailability, data = training_data)
+model2 = lm(IFR ~ UnskilledLaborAvailability, data = training_data)
+model3 = lm(IFR ~ Criminality, data = training_data)
+model4 = lm(IFR ~ Inflation, data = training_data)
+model5 = lm(IFR ~ AirPollution, data = training_data)
+
+# Zusammenfassung ausgeben zur Betrachtung der statistischen Signifikanz
+cat("\nModell 1 -----------------------------------------------------------")
+summary(model1)
+cat("\nModell 2 -----------------------------------------------------------")
+summary(model2)
+cat("\nModell 3 -----------------------------------------------------------")
+summary(model3)
+cat("\nModell 4 -----------------------------------------------------------")
+summary(model4)
+cat("\nModell 5 -----------------------------------------------------------")
+summary(model5)
+```
 
 ```{r}
+# Berechnung der Fehlerkennzahlen und einfügen in DataFrame
+# Data Frame erweitern
+evaluation = rbind(evaluation, data.frame(Model = c("Model1", "Model2", "Model3", "Model4", "Model5"),
+                                          MAE = numeric(5),
+                                          MAPE = numeric(5),
+                                          Rsquared=numeric(5),
+                                          Rsquared_adj=numeric(5)))
 
+# Funktionen definieren für MAE und MAPE
+MAE <- function(model) {
+  return (mean(abs(model$residuals)))
+}
+
+MAPE <- function(model) {
+  return (
+    mean(abs((as.numeric(model1$residuals)/
+                as.numeric(model1$fitted.values + model1$residuals))*100))
+  )
+}
+
+# MAE berechnen
+evaluation[evaluation$Model == "Model1",]$MAE = MAE(model1)
+evaluation[evaluation$Model == "Model2",]$MAE = MAE(model1)
+evaluation[evaluation$Model == "Model3",]$MAE = MAE(model1)
+evaluation[evaluation$Model == "Model4",]$MAE = MAE(model1)
+evaluation[evaluation$Model == "Model5",]$MAE = MAE(model1)
+
+# MAPE berechnen (SMAPE nicht benötigt, weil IFR immer >0)
+evaluation[evaluation$Model == "Model1",]$MAPE = mean(abs((as.numeric(model1$residuals)/as.numeric(training_data$IFR))*100))
+evaluation[evaluation$Model == "Model2",]$MAPE = mean(abs((as.numeric(model2$residuals)/as.numeric(training_data$IFR))*100))
+evaluation[evaluation$Model == "Model3",]$MAPE = mean(abs((as.numeric(model3$residuals)/as.numeric(training_data$IFR))*100))
+evaluation[evaluation$Model == "Model4",]$MAPE = mean(abs((as.numeric(model4$residuals)/as.numeric(training_data$IFR))*100))
+evaluation[evaluation$Model == "Model5",]$MAPE = mean(abs((as.numeric(model5$residuals)/as.numeric(training_data$IFR))*100))
+
+# R² berechnen
+evaluation[evaluation$Model == "Model1",]$Rsquared = summary(model1)$r.squared
+evaluation[evaluation$Model == "Model2",]$Rsquared = summary(model2)$r.squared
+evaluation[evaluation$Model == "Model3",]$Rsquared = summary(model3)$r.squared
+evaluation[evaluation$Model == "Model4",]$Rsquared = summary(model4)$r.squared
+evaluation[evaluation$Model == "Model5",]$Rsquared = summary(model5)$r.squared
+
+# Adjusted R² berechnen
+evaluation[evaluation$Model == "Model1",]$Rsquared_adj = summary(model1)$adj.r.squared
+evaluation[evaluation$Model == "Model2",]$Rsquared_adj = summary(model2)$adj.r.squared
+evaluation[evaluation$Model == "Model3",]$Rsquared_adj = summary(model3)$adj.r.squared
+evaluation[evaluation$Model == "Model4",]$Rsquared_adj = summary(model4)$adj.r.squared
+evaluation[evaluation$Model == "Model5",]$Rsquared_adj = summary(model5)$adj.r.squared
+
+# Tabelle anzeigen
+evaluation %>% kable(caption="Bewertung der Baseline und der univariaten Modelle nach MAE, MAPE, R² und adjusted R²", digits=3)
 ```
+
+Wir sehen zunächst, dass alle univariaten Modelle Verbesserungen gegenüber der Baseline darstellen, sowohl nach MAE als auch MAPE.
+Wir entscheiden uns hier für Modell 1 (Variable "SkilledLaborAvailability"), da dieses konsistent die besten Werte für MAE, MAPE, R² und Adjusted R² hat. Darüber hinaus sind die Parameter statistisch hoch signifikant (und auch signifikanter als bei den Modellen 3 bis 5 - Modell 2 liegt hier gleich auf).
+
+### Iteration 2: Bivariate Modelle
+Um Multikollinearität zu vermeiden, nehmen wir nur Variablen auf, die betragsweise um weniger als 0,75 mit SkilledLaborAvailability korrelieren. Das sind die Variablen "Inflation" und "AirPollution". "UnskilledLaborAvailability" und "Criminality" liegen darüber.
+
+```{r}
+# Modelle erstellen
+model1_1 = lm(IFR ~ SkilledLaborAvailability + Inflation, data = training_data)
+model1_2 = lm(IFR ~ SkilledLaborAvailability + AirPollution, data = training_data)
+
+# Zusammenfassung ausgeben zur Betrachtung der statistischen Signifikanz
+cat("\nModell 1.1 -----------------------------------------------------------")
+summary(model1_1)
+cat("\nModell 1.2 -----------------------------------------------------------")
+summary(model1_2)
+```
+
+```{r}
+# Berechnung der Fehlerkennzahlen und einfügen in DataFrame
+# Data Frame erweitern
+evaluation = rbind(evaluation, data.frame(Model = c("Model1_1", "Model1_2"),
+                                          MAE = numeric(2),
+                                          MAPE = numeric(2),
+                                          Rsquared=numeric(2),
+                                          Rsquared_adj=numeric(2)))
+
+# MAE berechnen
+evaluation[evaluation$Model == "Model1_1",]$MAE = MAE(model1_1)
+evaluation[evaluation$Model == "Model1_2",]$MAE = MAE(model1_2)
+
+# MAPE berechnen (SMAPE nicht benötigt, weil IFR immer >0)
+evaluation[evaluation$Model == "Model1_1",]$MAPE = MAPE(model1_1)
+evaluation[evaluation$Model == "Model1_2",]$MAPE = MAPE(model1_2)
+
+# R² berechnen
+evaluation[evaluation$Model == "Model1_1",]$Rsquared = summary(model1_1)$r.squared
+evaluation[evaluation$Model == "Model1_2",]$Rsquared = summary(model1_2)$r.squared
+
+# Adjusted R² berechnen
+evaluation[evaluation$Model == "Model1_1",]$Rsquared_adj = summary(model1_1)$adj.r.squared
+evaluation[evaluation$Model == "Model1_2",]$Rsquared_adj = summary(model1_2)$adj.r.squared
+
+# Tabelle anzeigen
+evaluation %>% kable(caption="Bewertung aller Modelle (inkl. bivariat) nach MAE, MAPE, R² und adjusted R²", digits=3)
+```
+
+Bei Modell1_1 (mit der Variable Inflation) stellen wir keine Verbesserung in den Kennzahlen fest, beim adjusted R² sogar eine Verschlechterung. Darüber hinaus ist der Parameter nicht statistisch signifikant.
+Bei Modell1_2 (mit AirPollution) gibt es eine leichte Verbesserung in den Kennzahlen bei immer noch guter statistischer Signifikanz. Die Verbesserung kann die Erhöhung der Modellkomplxität gerade noch rechtfertigen, und wir testen noch ein trivariates Modell.
+
+### Iteration 3: Trivariates Modell
+Die Korrelation zwischen AirPollution und Inflation ist sehr gering, daher erstellen wir ein Modell aus den Variablen SkilledLaborAvailability, AirPollution und Inflation (Korrelation mit SkilledLaborAvailability haben wir schon in der zweiten Iteration betrachtet).
+
+```{r}
+# Modelle erstellen
+model1_2_1 = lm(IFR ~ SkilledLaborAvailability + AirPollution + Inflation, data = training_data)
+
+# Zusammenfassung ausgeben zur Betrachtung der statistischen Signifikanz
+cat("\nModell 1.2.1 -----------------------------------------------------------")
+summary(model1_2_1)
+```
+
+```{r}
+# Berechnung der Fehlerkennzahlen und einfügen in DataFrame
+# Data Frame erweitern
+evaluation = rbind(evaluation, data.frame(Model = c("Model1_2_1"),
+                                          MAE = numeric(1),
+                                          MAPE = numeric(1),
+                                          Rsquared=numeric(1),
+                                          Rsquared_adj=numeric(1)))
+
+# MAE berechnen
+evaluation[evaluation$Model == "Model1_2_1",]$MAE = MAE(model1_2_1)
+
+# MAPE berechnen (SMAPE nicht benötigt, weil IFR immer >0)
+evaluation[evaluation$Model == "Model1_2_1",]$MAPE = MAPE(model1_2_1)
+
+# R² berechnen
+evaluation[evaluation$Model == "Model1_2_1",]$Rsquared = summary(model1_2_1)$r.squared
+
+# Adjusted R² berechnen
+evaluation[evaluation$Model == "Model1_2_1",]$Rsquared_adj = summary(model1_2_1)$adj.r.squared
+
+# Tabelle anzeigen
+evaluation %>% kable(caption="Bewertung aller Modelle (inkl. trivariat) nach MAE, MAPE, R² und adjusted R²", digits=3)
+```
+Zwar ändern sich im trivariaten Modell MAE und MAPE nicht mehr, aber wir sehen eine Verbesserung von R² und adjusted R². Die Signifikanz der einzelnen Parameter ist immer noch gut bis sehr gut. Wir übernehmen also Modell1_2_1 und beenden hier die Forward Selection, da keine weiteren (unkorrelierten) Variablen mehr zur Verfügung stehen. 
 
 ## Aufgabe 11
 
 ```{r}
-
+evaluation[evaluation$Model == 'Baseline' | evaluation$Model == 'Model1_2_1', c("MAE", "MAPE")] %>% kable(caption="Vergleich von Baseline zum ausgewählten Modell nach Forward Selection", digits=3)
 ```
+Im Vergleich zur Baseline hat das trivariate Modell einen deutlich geringeren mittleren absoluten Fehler (0,012 vs. 0,018, also 33% weniger) sowie eine geringere prozentuale Abweichung von 1.524% vs. 2.152%.
+Für die genaue Vorhersage der In-Full Rate kann allerdings auch eine Abweichung 1,2 Prozentpunkten relevant sein, zumal die Baseline selbst nur 1,8% abweicht.
+Insgesamt ist unser Modell also für den vorliegenden Zweck nur mäßig gut. Das sehen wir auch am eher geringen R² (Anteil der erklärten Varianz in den Daten) von 0,513.
 
 ## Aufgabe 12
 ```{r}
+# Werte für die Vorhersage zusammenstellen
+externals_SH_0423 <- externals[externals$Period=='Apr 2023' &
+                                 externals$region=='Shangh',
+                                 c("SkilledLaborAvailability", "AirPollution", "Inflation")]
+externals_BJ_0423 <- externals[externals$Period=='Apr 2023' &
+                                 externals$region=='Peking',
+                                 c("SkilledLaborAvailability", "AirPollution", "Inflation")]
 
+# Vorhersage
+data.frame(Region=c("Shanghai", "Peking"),
+           Periode=c("Apr 2023", "Apr 2023"),
+           Vorhersage_IFR=c(predict(model1_2_1, newdata = externals_SH_0423),
+                            predict(model1_2_1, newdata = externals_BJ_0423))) %>%
+  kable(caption="Vorhersage des IFR-Wertes in Shanghai und Peking im April 2023", digits=4)
 ```
+Nach der Modellvorhersage liegt die In-Full Rate im April 2023 in Shanghai höher als in Peking, die Aussage der Chefin wäre also richtig und wir würden die Wette nicht annehmen.
+
+Der Unterschied beträgt allerdings nur 1,05 Prozentpunkte. Darüber hinaus müssen wir verschiedene Unsicherheitsfaktoren in der Vorhersage berücksichtigen.
+
+Zunächst herrscht Unsicherheit im Modell selbst. Wir könnten beispielsweise Parameter fälschlich aufgenommen haben. Diese Unsicherheit wird durch den p-Wert quantifiziert und ist hier sehr gering. Daneben kann aber auch Multikollinearität zu Unsicherheit in den geschätzten Parametern führen. Sowohl AirPollution (0.50) als auch Inflation (0.68) haben mit SkilledLaborAvailability eine Korrelation, die nicht von der Hand zu weisen ist.
+
+Ein anderes Problem ist, dass relevante Variablen im Modell fehlen könnten. Dies ist nicht unwahrscheinlich, da wir eine eher niedrige erklärte Varianz (R²) haben. Gründe dafür sind beispielsweise dass wir nur die 5 am stärksten mit IFR korrelierten Variablen bei der Forward Selection überhaupt betrachtet haben.
+Ggf. müssten hier weitere Variablen betrachtet werden. Auch eine Unterscheidung der Regionen könnte relevant sein, man könnte diese beispielsweise als Dummy-Variable in das Modell mit aufnehmen (derzeit ist das Modell sozusagen der Schnitt über alle Regionen).
+Außerdem haben wir kein Feature Engineering betrieben, sodass Variablen ggf. nur geringe Linearität und damit Tauglichkeit für die Regression aufweisen.
+Darüber hinaus könnten auch solche Variablen relevant sein, die in unserem Datensatz gänzlich fehlen.
+
+Schließlich kommt eine weitere Unsicherheit aus der Vorhersage der externen Effekte. Wir wissen, dass diese für 2023 auf Vorhersagen beruhen, deren Unsicherheit jedoch unklar ist, da sie aus einer externen Quelle kommen.
+
+In Anbetracht dieser Unsicherheiten, dem ohnehin geringen Abstand der Vorhersage, dem hohen Wetteinsatz und dem Fakt, dass unsere Chefin nach Vorhersage ohnehin Recht hat, würden wir die Wette dankend ablehnen.
 
 # Entscheidung
 ## Aufgabe 13
