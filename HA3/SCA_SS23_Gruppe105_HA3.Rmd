@@ -251,18 +251,21 @@ evaluation %>% kable(caption="Bewertung der Baseline nach MAE und MAPE", digits=
 # Seed setzen
 set.seed(4141)
 
+# Nur Werte bis 2022 nehmen (2023 enthält nur Vorhersagen der externen Effekte, nicht die tatsächlichen IFR-Werte)
+cps_warehousing_2018_2022 <- subset(cps_warehousing, year(Period) <= 2022)
+
 # 80% der Daten für Trainingsset samplen
-training_sample_indices <- sample(1:nrow(cps_warehousing), nrow(cps_warehousing) * 0.8)
+training_sample_indices <- sample(1:nrow(cps_warehousing_2018_2022), nrow(cps_warehousing_2018_2022) * 0.8)
 
 # Trainingsset
-training_data <- cps_warehousing[training_sample_indices, ]
+training_data <- cps_warehousing_2018_2022[training_sample_indices, ]
 head(training_data) %>%
   kable(caption="Trainingsdaten")
 ```
 
 ```{r}
 # Testset
-test_data <- cps_warehousing[-training_sample_indices, ]
+test_data <- cps_warehousing_2018_2022[-training_sample_indices, ]
 head(test_data) %>%
   kable(caption="Testdaten")
 ```
@@ -286,7 +289,4 @@ head(test_data) %>%
 # Entscheidung
 ## Aufgabe 13
 
-```{r}
-
-```
 
