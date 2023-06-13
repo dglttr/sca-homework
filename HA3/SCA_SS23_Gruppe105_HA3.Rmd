@@ -426,7 +426,12 @@ evaluation[evaluation$Model == "Model1_2_1",]$Rsquared_adj = summary(model1_2_1)
 # Tabelle anzeigen
 evaluation %>% kable(caption="Bewertung aller Modelle (inkl. trivariat) nach MAE, MAPE, R² und adjusted R²", digits=3)
 ```
-Zwar ändern sich im trivariaten Modell MAE und MAPE nicht mehr, aber wir sehen eine Verbesserung von R² und adjusted R². Die Signifikanz der einzelnen Parameter ist immer noch gut bis sehr gut. Wir übernehmen also Modell1_2_1 und beenden hier die Forward Selection, da keine weiteren (unkorrelierten) Variablen mehr zur Verfügung stehen. 
+Zwar ändern sich im trivariaten Modell MAE und MAPE nicht mehr, aber wir sehen eine Verbesserung von R² und adjusted R². Die Signifikanz der einzelnen Parameter ist immer noch gut bis sehr gut. Wir übernehmen also Modell1_2_1 und beenden hier die Forward Selection, da keine weiteren (unkorrelierten) Variablen mehr zur Verfügung stehen.
+
+### Test auf Overfitting
+```{r}
+# TODO
+```
 
 ## Aufgabe 11
 
@@ -480,16 +485,25 @@ Auch auf Upstream-Prozesse wie der Produktion oder dem Shipping von der Produkti
 Schließlich hat eine bessere Kenntnis der IFR unserer WH-DL auch Einfluss auf die Finanzprozesse, konkret die Debitorenbuchhaltung (Accounts Receivable). Wenn wegen zu niedriger IFR im Lager Ware beim Kunden fehlt, können wir zur Steigerung der Kundenzufriedenheit Rechnungen über unvollständige Lieferungen vorausschauend zurückhalten bzw. Mahnungen unterlassen.
 
 ### Nutzer:innen
-- Interne Auftraggeber der WH-DL
-- Vertrieb (Frühwarnungen, Kundenzufriedenheit)
-- Angestellte der Finanzabteilung
+Wir können verschiedene Nutzer:innengruppen identifizieren:
+- Interne Auftraggeber der WH-DL: Diese können das Modell zur Bewertung und Steuerung von WH-DL nutzen und ggf. frühzeitig andere Dienstleister beauftragen.
+- Vertrieb: Diese können Frühwarnungen aussprechen und damit Kundenerwartungen steuern.
+- Angestellte der Finanzabteilung: Diese können wir oben beschrieben zur Steigerung der Kundenzufriedenheit Rechnungen zurückhalten oder Mahnungen unterlassen.
 
 ### Bereitstellung
-- Integration in BI-Dashboards/Reports
-- Integration in CRM-Tools
-- Integration in ERP-System
+Das Modell bzw. dessen Ergebnisse können den Nutzer:innen auf verschiedenen Wegen bereitgestellt werden:
+- Bereitstellung als Web App/Dashboard: Mithilfe von Tools wie Shiny für R können schnell Web Apps gebaut werden, die einfachen Zugriff auf die Modellvorhersagen von Browser aus ermöglichen.
+- Integration in Business Intelligence-Dashboards/Reports: Falls schon BI-Lösungen wie Tableau oder Power BI verwendet werden, könnten Modellvorhersagen hier integriert werden.
+- Integration in CRM-Tools: Bei Verwendung von Customer Relationship Management-Tools wie Salesforce könnten Modell-Vorhersagen direkt hier eingespielt werden, damit beispielsweise Vertriebsmitarbeitende den Kunden frühzeitig warnen können.
+- Integration in ERP-System: Ggf. könnten Vorhersagen auch ins SAP-System integriert werden, um an zentraler Stelle zur Verfügung zu stehen. Dies ist jedoch in den meisten Fällen deutlich aufwändiger.
+
+Je nach Situation bietet sich eine andere Lösung an. Wir bereits ein BI-Tool verwendet, präferieren viele Nutzer:innen vermutlich eine Integration in bestehende Dashboards oder Reports. Für einen schnellen Prototypen bietet sich eine Shiny App eher an.
 
 ### Datenbeschaffung
-- ERP-System für Daten zu in Anspruch genommenen Services, um IFR zu berechnen
-- Externe Datenbanken für Einflussfaktoren
+Um relevant zu bleiben, sollte das Modell regelmäßig aktualisiert werden. Dazu sollte eine Data Pipeline gebaut werden, die dem Modell regelmäßig Daten zuführt und typischerweise aus den Schritten Extraktion aus Quellsystemen, Transformation in nützliche Datenformate, und Laden in die Analyseumgebung besteht.
+Eine solche Datenpipeline kann je nach Bedarf mehr oder weniger automatisiert laufen.
+
+Als Quellsysteme sind zu betrachten:
+- ERP-System für Daten zu in Anspruch genommenen Services, um IFR zu berechnen. Diese können wir über Schnittstellen des ERP-Systems abfragen.
+- Externe Datenbanken für Einflussfaktoren. Diese sollten wir in den meisten Fällen über REST APIs abfragen können. Ggf. müssen dazu Lizenzen für nicht-öffentliche Datenbanken gekauft werden.
 
