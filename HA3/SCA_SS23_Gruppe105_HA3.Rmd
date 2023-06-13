@@ -429,9 +429,17 @@ evaluation %>% kable(caption="Bewertung aller Modelle (inkl. trivariat) nach MAE
 Zwar ändern sich im trivariaten Modell MAE und MAPE nicht mehr, aber wir sehen eine Verbesserung von R² und adjusted R². Die Signifikanz der einzelnen Parameter ist immer noch gut bis sehr gut. Wir übernehmen also Modell1_2_1 und beenden hier die Forward Selection, da keine weiteren (unkorrelierten) Variablen mehr zur Verfügung stehen.
 
 ### Test auf Overfitting
+Um auf Overfitting zu testen, wenden wir das Modell auf die Testdaten an:
+
 ```{r}
-# TODO
+# Testdaten vorhersagen
+predictions_test <- predict(model1_2_1, newdata = test_data[,c("SkilledLaborAvailability", "AirPollution", "Inflation")])
+
+# Kennzahlen berechnen
+data.frame(MAE=mean(abs(test_data$IFR - predictions_test)),
+           MAPE=mean(abs((as.numeric(test_data$IFR - predictions_test)/as.numeric(test_data$IFR))*100))) %>% kable(caption="MAE und MAPE des Modells auf den Testdaten", digits=4)
 ```
+Wir sehen hier keine Anzeichen für Overfitting. MAE und MAPE sind auch auf den Testdaten ähnlich (hier sogar geringer) als auf den Trainingsdaten. Das Modell scheint also gut zu generalisieren.
 
 ## Aufgabe 11
 
