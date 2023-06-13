@@ -288,5 +288,25 @@ head(test_data) %>%
 
 # Entscheidung
 ## Aufgabe 13
+Mit dem vorliegenden Modell können wir die In-Full Rate von "CPS Warehousing" basierend auf externen Einflussfaktoren vorhersagen. Entsprechende Modelle könnten wir nun auch für alle weiteren Warehousing-Dienstleister erstellen, oder ein großes Modell für alle Dienstleister (mit den einzelnen WH-DL als Dummy-Variablen).
 
+### Beeinflusste Prozesse
+Das Modell kann potenziell unseren gesamten Order-to-Cash-Prozess beeinflussen. Am unmittelbarsten ist natürlich das Warehousing selbst betroffen. Hier können wir mithilfe des Modells wo nötig weitere WH-Dienstleistungen frühzeitig buchen (etwa um übrig gebliebene Flaschen zu packen und laden), proaktiv mit schlecht performenden WH-DL an Verbesserungen arbeiten, oder andere WH-DL auswählen.
+Änderungen im Warehousing betreffen auch das Order Management, eine höhere IFR im Warehousing sollte in einer höheren IFR beim Kunden resultieren, womit wir die Kundenzufriedenheit erhöhen und im Idealfall den Auftragseingang und damit den Umsatz steigern können. Neben direkten Verbesserungen kann auch verbesserte Kommunikation die Kundenzufriedenheit steigern, etwa wenn wir Warnungen bspw. bei Extremwetter aussprechen, dass sich voraussichtlich die Ware nicht vollständig liefern lässt.
+Auch auf Upstream-Prozesse wie der Produktion oder dem Shipping von der Produktion zu den Großlagern können sich indirekte Auswirkungen ergeben, etwa wenn sich der Ordereingang mittelfristig ändert oder wir sehen, dass Ware an anderen Orten benötigt wird.
+Schließlich hat eine bessere Kenntnis der IFR unserer WH-DL auch Einfluss auf die Finanzprozesse, konkret die Debitorenbuchhaltung (Accounts Receivable). Wenn wegen zu niedriger IFR im Lager Ware beim Kunden fehlt, können wir zur Steigerung der Kundenzufriedenheit Rechnungen über unvollständige Lieferungen vorausschauend zurückhalten bzw. Mahnungen unterlassen.
+
+### Nutzer:innen
+- Interne Auftraggeber der WH-DL
+- Vertrieb (Frühwarnungen, Kundenzufriedenheit)
+- Angestellte der Finanzabteilung
+
+### Bereitstellung
+- Integration in BI-Dashboards/Reports
+- Integration in CRM-Tools
+- Integration in ERP-System
+
+### Datenbeschaffung
+- ERP-System für Daten zu in Anspruch genommenen Services, um IFR zu berechnen
+- Externe Datenbanken für Einflussfaktoren
 
