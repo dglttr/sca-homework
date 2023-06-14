@@ -344,7 +344,8 @@ Wir sehen zunächst, dass alle univariaten Modelle Verbesserungen gegenüber der
 Wir entscheiden uns hier für Modell 1 (Variable "SkilledLaborAvailability"), da dieses konsistent die besten Werte für MAE, MAPE, R² und Adjusted R² hat. Darüber hinaus sind die Parameter statistisch hoch signifikant (und auch signifikanter als bei den Modellen 3 bis 5 - Modell 2 liegt hier gleich auf).
 
 ### Iteration 2: Bivariate Modelle
-Um Multikollinearität zu vermeiden, nehmen wir nur Variablen auf, die betragsweise um weniger als 0,75 mit SkilledLaborAvailability korrelieren. Das sind die Variablen "Inflation" und "AirPollution". "UnskilledLaborAvailability" und "Criminality" liegen darüber.
+Alle anderen Variablen korrelieren mit mehr als 0,5 mit SkilledLaborAvailability (siehe Aufgabe 5), was schon relativ hoch ist, das heißt Multikollinearität tritt auf.
+Um dennoch eine weitere Iteration der Forward Selection zu ermöglichen, wählen wir als Schwellenwert eine betragsweise Korrelation von 0,7 mit SkilledLaborAvailability. Darunter liegen die Variablen "Inflation" und "AirPollution", welche wir nun also weiter betrachten werden. "UnskilledLaborAvailability" und "Criminality" liegen darüber.
 
 ```{r}
 # Modelle erstellen
