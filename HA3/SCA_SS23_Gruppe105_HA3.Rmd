@@ -100,7 +100,7 @@ ldl_ifr_warehousing %>%
   kable(caption="Bester LDL nach IFR, über Regionen und Perioden hinweg", digits=3)
 ```
 
-Der insgesamt beste LDL über alle Regionen und Perioden hinweg ist Flying Mercury Warehousing mit einer IFR von 83,7%.
+Als besten Warehousing-LDL betrachten wir hier den LDL mit der höchsten durchschnittlichen IFR über alle Regionen und Perioden hinweg. Das ist Flying Mercury Warehousing mit einer durchschnittlichen IFR von 83,7%.
 
 ```{r}
 # Schlechtester IFR‐Wert (und Periode) dieses LDL
@@ -134,8 +134,9 @@ ldl_ifr_shipping %>%
   filter(Period == "Apr 2019") %>%
   filter(region == "Japan") %>%
   arrange(OTD) %>%
+  # Wir können den ersten Eintrag nehmen, weil das Dataframe bereits sortiert ist
   head(1) %>%
-  kable(caption="Aufsteigend sortierte OTD-Werte von LDL in der Region Japan im April 2019", digits=3)
+  kable(caption="Niedrigster OTD-Wert und entsprechender LDL in der Region Japan im April 2019", digits=3)
 ```
 
 Der schlechteste OTD-Wert eines Shipping-LDL in der Region Japan im April 2019 beträgt 7.1%. Betroffen ist der Dienstleister CPS Shipping.
