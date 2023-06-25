@@ -12,6 +12,7 @@ header-includes:
 ```{r setup, include=FALSE}
 # Laden von Packages
 library(tidyverse)
+library(readxl)
 library(lubridate)
 library(forecast)
 library(zoo)
@@ -20,6 +21,12 @@ library(ggplot2)
 library(knitr)
 library(GGally)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Daten laden
+```{r}
+materialverlauf <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
+materialverlauf
 ```
 
 # Explorative Datenanalyse
