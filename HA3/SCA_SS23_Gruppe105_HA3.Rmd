@@ -19,6 +19,7 @@ library(scales)
 library(ggplot2)
 library(knitr)
 library(GGally)
+library(kableExtra)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
@@ -63,8 +64,9 @@ ldl_otd <- services %>%
   summarize(OTD = mean(OTD)) %>%
   arrange(OTD)
 
-ldl_otd %>% kable(caption="Logistikdienstleister nach On-Time Delivery Rate", digits=3)
+ldl_otd %>% kable(caption="Logistikdienstleister nach On-Time Delivery Rate", digits=3) %>% kable_styling(latex_options = "hold_position")
 ```
+\pagebreak
 
 ```{r}
 # Tabelle nach IFR aggregieren
@@ -73,8 +75,10 @@ ldl_ifr <- services %>%
   summarize(IFR = mean(IFR)) %>%
   arrange(IFR)
 
-ldl_ifr %>% kable(caption="Logistikdienstleister nach In-Full Rate", digits=3)
+ldl_ifr %>% kable(caption="Logistikdienstleister nach In-Full Rate", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
+
+
 
 
 ## Aufgabe 2
@@ -87,8 +91,9 @@ ldl_ifr_warehousing <- services %>%
   summarize(IFR = mean(IFR)) %>%
   arrange(IFR)
 
-ldl_ifr_warehousing %>% kable(caption='In-Full Rate der Warehousing-LDL nach Region und Periode', digits=3)
+head(ldl_ifr_warehousing) %>% kable(caption='In-Full Rate der Warehousing-LDL nach Region und Periode', digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
+\pagebreak
 
 ```{r}
 # Insgesamt bester Warehousing-LDL
@@ -97,7 +102,7 @@ ldl_ifr_warehousing %>%
   summarize(IFR=mean(IFR)) %>%
   arrange(desc(IFR)) %>%
   head(1) %>%
-  kable(caption="Bester LDL nach IFR, über Regionen und Perioden hinweg", digits=3)
+  kable(caption="Bester LDL nach IFR, über Regionen und Perioden hinweg", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 Als besten Warehousing-LDL betrachten wir hier den LDL mit der höchsten durchschnittlichen IFR über alle Regionen und Perioden hinweg. Das ist Flying Mercury Warehousing mit einer durchschnittlichen IFR von 83,7%.
@@ -109,7 +114,7 @@ ldl_ifr_warehousing %>%
   filter(region == "Shangh") %>%
   arrange(IFR) %>%
   head(1) %>%
-  kable(caption="Schlechtester IFR-Wert und Periode von Flying Mercury Warehousing in der Region Shanghai", digits=3)
+  kable(caption="Schlechtester IFR-Wert und Periode von Flying Mercury Warehousing in der Region Shanghai", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 Der schlechteste IFR-Wert von Flying Mercury Warehousing in der Region Shanghai beträgt 78,4% und war im Mai 2022.
@@ -125,7 +130,7 @@ ldl_ifr_shipping <- services %>%
   # Sortieren nach OTD Rate
   arrange(OTD)
 
-ldl_ifr_shipping %>% kable(caption='On-Time Delivery Rate der Shipping-LDL nach Region und Periode', digits=3)
+head(ldl_ifr_shipping) %>% kable(caption='On-Time Delivery Rate der Shipping-LDL nach Region und Periode', digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 ```{r}
@@ -136,7 +141,7 @@ ldl_ifr_shipping %>%
   arrange(OTD) %>%
   # Wir können den ersten Eintrag nehmen, weil das Dataframe bereits sortiert ist
   head(1) %>%
-  kable(caption="Niedrigster OTD-Wert und entsprechender LDL in der Region Japan im April 2019", digits=3)
+  kable(caption="Niedrigster OTD-Wert und entsprechender LDL in der Region Japan im April 2019", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 Der schlechteste OTD-Wert eines Shipping-LDL in der Region Japan im April 2019 beträgt 7.1%. Betroffen ist der Dienstleister CPS Shipping.
@@ -154,8 +159,11 @@ cps_warehousing <- merge(subset(ldl_ifr_warehousing, Logistikdienstleister == "C
 # Index X aus Externals-Teil löschen
 cps_warehousing <- subset(cps_warehousing, select=-c(X))
 
-head(cps_warehousing) %>% kable(caption="IFR Rate sowie externe Einflussfaktoren von CPS Warehousing nach Region und Periode")
+outputable <- head(cps_warehousing)
+
+list(outputable[,1:7],outputable[,8:13], outputable[,14:19], outputable[,20:24], outputable[,25:26]) %>% kable(caption="IFR Rate sowie externe Einflussfaktoren von CPS Warehousing nach Region und Periode" )%>%  kable_styling(latex_options = "hold_position")
 ```
+\pagebreak
 
 ## Aufgabe 5
 
@@ -169,8 +177,9 @@ correlations_IFR <- data.frame(IFR=t(correlations_IFR)) %>%
 
 # Ausgabe
 correlations_IFR %>%
-  kable(caption="Korrelation aller Variablen zur In-Full Rate", digits=4)
+  kable(caption="Korrelation aller Variablen zur In-Full Rate", digits=4) %>%  kable_styling(latex_options = "hold_position")
 ```
+\pagebreak
 
 ### b) Die 5 am stärksten korrelierenden Effekte und ihre Korrelationen
 ```{r}
@@ -178,7 +187,8 @@ correlations_IFR %>%
 strongest_five_effects <- rownames(head(correlations_IFR, 6))
 
 cor(subset(cps_warehousing, select=strongest_five_effects)) %>%
-  kable(caption="IFR und die 5 stärksten Effekte darauf", digits=4)
+  kable(caption="IFR und die 5 stärksten Effekte darauf", digits=4) %>% 
+  kable_styling(latex_options=c("scale_down","hold_position"))
 ```
 
 ### c) Korrelations-Plot für die 5 stärksten Effekte
@@ -194,7 +204,7 @@ ggpairs(subset(cps_warehousing, select=strongest_five_effects),
 cps_warehousing$Baseline <- mean(cps_warehousing$IFR)
 
 head(cps_warehousing[, c("Period", "region", "IFR", "Baseline")]) %>%
-  kable(caption="Tabellenkopf für LDL CPS Warehousing mit Baseline", digits=4)
+  kable(caption="Tabellenkopf für LDL CPS Warehousing mit Baseline", digits=4) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 Eine sehr einfache Baseline stellt der Mittelwert der vorherzusagenden Variable (IFR) dar. Dieser ist leicht zu berechnen und liegt per Definition "im Schnitt richtig". Natürlich kann der Mittelwert allerdings keine Nuancen basierend auf den anderen verfügbaren externen Informationen aufgreifen.
@@ -241,7 +251,7 @@ evaluation[evaluation$Model == "Baseline",]$Rsquared = NA
 evaluation[evaluation$Model == "Baseline",]$Rsquared_adj = NA
 
 # Tabelle anzeigen
-evaluation %>% kable(caption="Bewertung der Baseline nach MAE und MAPE", digits=3)
+evaluation %>% kable(caption="Bewertung der Baseline nach MAE und MAPE", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 ## Aufgabe 9
@@ -255,16 +265,22 @@ training_sample_indices <- sample(1:nrow(cps_warehousing), nrow(cps_warehousing)
 
 # Trainingsset
 training_data <- cps_warehousing[training_sample_indices, ]
-head(training_data) %>%
-  kable(caption="Trainingsdaten")
+tr_datahead<- head(training_data) 
+list(tr_datahead[,1:7],tr_datahead[,8:13], tr_datahead[,14:19], tr_datahead[,20:24], tr_datahead[,25:27]) %>% kable(caption="Trainingsdaten") %>%  
+  kable_styling(latex_options = "hold_position")
 ```
+\pagebreak
 
 ```{r}
 # Testset
 test_data <- cps_warehousing[-training_sample_indices, ]
-head(test_data) %>%
-  kable(caption="Testdaten")
+
+
+test_datahead <- head(test_data) 
+list(test_datahead[,1:7],test_datahead[,8:13], test_datahead[,14:19], test_datahead[,20:24], test_datahead[,25:27]) %>% kable(caption="Testdaten") %>%  kable_styling(latex_options = "hold_position")
 ```
+
+\pagebreak
 ## Aufgabe 10
 ### Iteration 1: Univariate Modelle
 ```{r}
@@ -338,7 +354,7 @@ evaluation[evaluation$Model == "Model4",]$Rsquared_adj = summary(model4)$adj.r.s
 evaluation[evaluation$Model == "Model5",]$Rsquared_adj = summary(model5)$adj.r.squared
 
 # Tabelle anzeigen
-evaluation %>% kable(caption="Bewertung der Baseline und der univariaten Modelle nach MAE, MAPE, R² und adjusted R²", digits=3)
+evaluation %>% kable(caption="Bewertung der Baseline und der univariaten Modelle nach MAE, MAPE, R² und adjusted R²", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 Wir sehen zunächst, dass alle univariaten Modelle Verbesserungen gegenüber der Baseline darstellen, sowohl nach MAE als auch MAPE.
@@ -386,7 +402,7 @@ evaluation[evaluation$Model == "Model1_1",]$Rsquared_adj = summary(model1_1)$adj
 evaluation[evaluation$Model == "Model1_2",]$Rsquared_adj = summary(model1_2)$adj.r.squared
 
 # Tabelle anzeigen
-evaluation %>% kable(caption="Bewertung aller Modelle (inkl. bivariat) nach MAE, MAPE, R² und adjusted R²", digits=3)
+evaluation %>% kable(caption="Bewertung aller Modelle (inkl. bivariat) nach MAE, MAPE, R² und adjusted R²", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 
 Bei Modell1_1 (mit der Variable Inflation) stellen wir keine Verbesserung in den Kennzahlen fest, beim adjusted R² sogar eine Verschlechterung. Darüber hinaus ist der Parameter nicht statistisch signifikant.
@@ -426,7 +442,7 @@ evaluation[evaluation$Model == "Model1_2_1",]$Rsquared = summary(model1_2_1)$r.s
 evaluation[evaluation$Model == "Model1_2_1",]$Rsquared_adj = summary(model1_2_1)$adj.r.squared
 
 # Tabelle anzeigen
-evaluation %>% kable(caption="Bewertung aller Modelle (inkl. trivariat) nach MAE, MAPE, R² und adjusted R²", digits=3)
+evaluation %>% kable(caption="Bewertung aller Modelle (inkl. trivariat) nach MAE, MAPE, R² und adjusted R²", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 Zwar ändern sich im trivariaten Modell MAE und MAPE nicht mehr, aber wir sehen eine Verbesserung von R² und adjusted R². Die Signifikanz der einzelnen Parameter ist immer noch gut bis sehr gut. Wir übernehmen also Modell1_2_1 und beenden hier die Forward Selection, da keine weiteren (unkorrelierten) Variablen mehr zur Verfügung stehen.
 
@@ -439,14 +455,14 @@ predictions_test <- predict(model1_2_1, newdata = test_data[,c("SkilledLaborAvai
 
 # Kennzahlen berechnen
 data.frame(MAE=mean(abs(test_data$IFR - predictions_test)),
-           MAPE=mean(abs((as.numeric(test_data$IFR - predictions_test)/as.numeric(test_data$IFR))*100))) %>% kable(caption="MAE und MAPE des Modells auf den Testdaten", digits=4)
+           MAPE=mean(abs((as.numeric(test_data$IFR - predictions_test)/as.numeric(test_data$IFR))*100))) %>% kable(caption="MAE und MAPE des Modells auf den Testdaten", digits=4) %>%  kable_styling(latex_options = "hold_position")
 ```
 Wir sehen hier keine Anzeichen für Overfitting. MAE und MAPE sind auch auf den Testdaten ähnlich (hier sogar geringer) als auf den Trainingsdaten. Das Modell scheint also gut zu generalisieren.
 
 ## Aufgabe 11
 
 ```{r}
-evaluation[evaluation$Model == 'Baseline' | evaluation$Model == 'Model1_2_1', c("MAE", "MAPE")] %>% kable(caption="Vergleich von Baseline zum ausgewählten Modell nach Forward Selection", digits=3)
+evaluation[evaluation$Model == 'Baseline' | evaluation$Model == 'Model1_2_1', c("MAE", "MAPE")] %>% kable(caption="Vergleich von Baseline zum ausgewählten Modell nach Forward Selection", digits=3) %>%  kable_styling(latex_options = "hold_position")
 ```
 Im Vergleich zur Baseline hat das trivariate Modell einen deutlich geringeren mittleren absoluten Fehler (0,012 vs. 0,018, also 33% weniger) sowie eine geringere prozentuale Abweichung von 1.524% vs. 2.152%.
 Für die genaue Vorhersage der In-Full Rate kann allerdings auch eine Abweichung 1,2 Prozentpunkten relevant sein, zumal die Baseline selbst nur 1,8% abweicht.
@@ -467,7 +483,7 @@ data.frame(Region=c("Shanghai", "Peking"),
            Periode=c("Apr 2023", "Apr 2023"),
            Vorhersage_IFR=c(predict(model1_2_1, newdata = externals_SH_0423),
                             predict(model1_2_1, newdata = externals_BJ_0423))) %>%
-  kable(caption="Vorhersage des IFR-Wertes in Shanghai und Peking im April 2023", digits=4)
+  kable(caption="Vorhersage des IFR-Wertes in Shanghai und Peking im April 2023", digits=4) %>%  kable_styling(latex_options = "hold_position")
 ```
 Nach der Modellvorhersage liegt die In-Full Rate im April 2023 in Shanghai höher als in Peking, die Aussage der Chefin wäre also richtig und wir würden die Wette nicht annehmen.
 
