@@ -23,13 +23,44 @@ library(GGally)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-# Daten laden
+# CRISP-DM Phase 1: Problemidentifizierung
+- Kurze Beschreibung Unternehmen/Setting
+- Kurze Beschreibung Verständnis Aufgabenstellung
+- Input vom Unternehmen
+  - Wenige Stock-outs -> stimmt das? Impact?
+  - Stock-outs nur wegen mangelnder Verfügbarkeit auf dem Weltmarkt
+  - Reduzierung der Mindestbestände und Sicherheitsbestände
+  - Optimierung Bestellmengen (schneller Lagerumschlag, ohne Stock-outs)
+- Unsere Überlegungen
+- Unser Ansatz
+
+# CRISP-DM Phase 2: Datenbeschaffung
+- Hier Daten erhalten
+- High-Level Beschreibung: Um welche Daten handelt es sich?
+
+# CRISP-DM Phase 3: Datenaufbereitung
 ```{r}
 materialverlauf <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
-materialverlauf
+
+# Datentypen konvertieren
+materialverlauf$ArtikelNr <- as.factor(materialverlauf$ArtikelNr)
+materialverlauf$`Artikel-Bezeichnung` <- as.factor(materialverlauf$`Artikel-Bezeichnung`)
+materialverlauf$EinAutDatTyp <- as.factor(materialverlauf$EinAutDatTyp)
+materialverlauf$PjNr <- as.factor(materialverlauf$PjNr)
+materialverlauf$PjInfo <- as.factor(materialverlauf$PjInfo)
+materialverlauf$ORGAKzl <- as.factor(materialverlauf$ORGAKzl)
+materialverlauf$EinAusDat <- as.Date(materialverlauf$EinAusDat)
+materialverlauf$BstDat <- as.Date(materialverlauf$BstDat)
+
+head(materialverlauf)
+```
+```{r}
+# Zusammenfassung über Daten ausgeben
+summary(materialverlauf)
 ```
 
-# Explorative Datenanalyse
+# CRISP-DM Phase 4: Analyse
+## Explorative Datenanalyse
 - Inhalt
   - Bestandsverlauf der Materialien über die letzten Jahre
   - Einkaufs- und Abruflosgrößen
@@ -39,7 +70,7 @@ materialverlauf
   - Korrelations-, Clusteranalysen, Association Rule Mining, ...
 
 
-# Entscheidungsassistent
+## Entscheidungsassistent
 - Persona
   - Für den Einkauf
 - Funktionalitäten
@@ -48,3 +79,10 @@ materialverlauf
   - Auf Materialebene Informationen bereitstellen, die den Einkaufenden in den Unternehmensprozessen unterstützt (insb. Vorschläge bezüglich Einkaufslosgrößen und Bestellzeitpunkte)
   - Mehrere Zielgrößen denkbar, z.B. Materialverfügbarkeit, Lagerkosten oder Transportkosten
   - Dazu deskriptive und diagnostische Elemente für Drilldown durch User
+  
+# CRISP-DM Phase 5: Bewertung der Ergebnisse
+- Wie schätzen wir unsere Ergebnisse ein?
+
+# CRISP-DM Phase 6: Bereitstellung und Nutzengenerierung
+- Wie würden wir unsere Ergebnisse/ unser Tool deployen?
+- Wie wird damit ein Mehrwert generiert?
