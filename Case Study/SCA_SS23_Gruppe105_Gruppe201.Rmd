@@ -52,11 +52,34 @@ materialverlauf$ORGAKzl <- as.factor(materialverlauf$ORGAKzl)
 materialverlauf$EinAusDat <- as.Date(materialverlauf$EinAusDat)
 materialverlauf$BstDat <- as.Date(materialverlauf$BstDat)
 
-head(materialverlauf)
+head(materialverlauf) %>% kable(caption="Ausgabe der ersten 6 Zeilen des Materialverlaufs")
 ```
 ```{r}
 # Zusammenfassung über Daten ausgeben
 summary(materialverlauf)
+```
+
+```{r}
+gruppe_b_materialien <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
+                         "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
+                         "Kabelbinder 280x4,5 mm schwarz",
+                         "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
+                         "FINTECH Alu Steckrohr IESR 40 AL (3m)",
+                         "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
+
+mat_verlauf_gruppeB <- materialverlauf[materialverlauf$`Artikel-Bezeichnung` %in% gruppe_b_materialien,]
+summary(mat_verlauf_gruppeB)
+```
+
+
+```{r}
+# Visualisierung des Bestandes
+ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezeichnung`)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
+    geom_point(size=0.3) +
+    xlab("Zeit") + 
+    ylab("Materialbestand") +
+    theme(legend.position = "none")
 ```
 
 # CRISP-DM Phase 4: Analyse
@@ -68,7 +91,6 @@ summary(materialverlauf)
   - Statistiken
   - Visualisierungen
   - Korrelations-, Clusteranalysen, Association Rule Mining, ...
-
 
 ## Entscheidungsassistent
 - Persona
