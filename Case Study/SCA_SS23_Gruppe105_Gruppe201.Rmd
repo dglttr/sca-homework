@@ -77,6 +77,11 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezei
   - Visualisierungen
   - Korrelations-, Clusteranalysen, Association Rule Mining, ...
 
+```{r}
+ts_3d_Scheiben = ts(materialverlauf[materialverlauf$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2",], frequency = 12)
+head(ts_3d_Scheiben)
+```
+
 # Entscheidungsassistent
 - Persona
   - Für den Einkauf
