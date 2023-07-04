@@ -23,22 +23,7 @@ library(GGally)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-# CRISP-DM Phase 1: Problemidentifizierung
-- Kurze Beschreibung Unternehmen/Setting
-- Kurze Beschreibung Verständnis Aufgabenstellung
-- Input vom Unternehmen
-  - Wenige Stock-outs -> stimmt das? Impact?
-  - Stock-outs nur wegen mangelnder Verfügbarkeit auf dem Weltmarkt
-  - Reduzierung der Mindestbestände und Sicherheitsbestände
-  - Optimierung Bestellmengen (schneller Lagerumschlag, ohne Stock-outs)
-- Unsere Überlegungen
-- Unser Ansatz
-
-# CRISP-DM Phase 2: Datenbeschaffung
-- Hier Daten erhalten
-- High-Level Beschreibung: Um welche Daten handelt es sich?
-
-# CRISP-DM Phase 3: Datenaufbereitung
+# Datenaufbereitung
 ```{r}
 materialverlauf <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
 
@@ -71,7 +56,9 @@ mat_verlauf_gruppeB <- materialverlauf[materialverlauf$`Artikel-Bezeichnung` %in
 summary(mat_verlauf_gruppeB)
 ```
 
+# Datenanalyse
 
+## Visualisierung
 ```{r}
 # Visualisierung des Bestandes
 ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezeichnung`)) +
@@ -82,8 +69,6 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezei
     theme(legend.position = "none")
 ```
 
-# CRISP-DM Phase 4: Analyse
-## Explorative Datenanalyse
 - Inhalt
   - Bestandsverlauf der Materialien über die letzten Jahre
   - Einkaufs- und Abruflosgrößen
@@ -92,7 +77,7 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezei
   - Visualisierungen
   - Korrelations-, Clusteranalysen, Association Rule Mining, ...
 
-## Entscheidungsassistent
+# Entscheidungsassistent
 - Persona
   - Für den Einkauf
 - Funktionalitäten
@@ -101,10 +86,3 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezei
   - Auf Materialebene Informationen bereitstellen, die den Einkaufenden in den Unternehmensprozessen unterstützt (insb. Vorschläge bezüglich Einkaufslosgrößen und Bestellzeitpunkte)
   - Mehrere Zielgrößen denkbar, z.B. Materialverfügbarkeit, Lagerkosten oder Transportkosten
   - Dazu deskriptive und diagnostische Elemente für Drilldown durch User
-  
-# CRISP-DM Phase 5: Bewertung der Ergebnisse
-- Wie schätzen wir unsere Ergebnisse ein?
-
-# CRISP-DM Phase 6: Bereitstellung und Nutzengenerierung
-- Wie würden wir unsere Ergebnisse/ unser Tool deployen?
-- Wie wird damit ein Mehrwert generiert?
