@@ -68,6 +68,62 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezei
     ylab("Materialbestand") +
     theme(legend.position = "none")
 ```
+```{r}
+"DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
+                         "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
+                         "Kabelbinder 280x4,5 mm schwarz",
+                         "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
+                         "FINTECH Alu Steckrohr IESR 40 AL (3m)",
+                         "3d-U-Scheiben     8,4   M 8         DIN 9021  A2"
+```
+
+```{r}
+# Visualisierung der Menge
+mat_verlauf_gruppeB <- materialverlauf %>%
+  filter(`Artikel-Bezeichnung` %in% gruppe_b_materialien) %>%
+  filter(EinAutDatTyp %in% c("geliefertAm", "BereitDat", "PjPhaseDat")) %>%
+  group_by(`Artikel-Bezeichnung`) %>%
+  mutate(cum_sum = cumsum(Menge))
+
+ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=cum_sum, fill=`Artikel-Bezeichnung`)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
+    geom_line() +
+    xlab("Zeit") + 
+    ylab("Materialmenge") +
+    theme(legend.position = "none") +
+    ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
+```
+
+
+```{r}
+mat_verlauf_gruppeB <- mat_verlauf_gruppeB %>% mutate(cum_sum = cumsum(Menge))
+
+ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=cum_sum, fill=`Artikel-Bezeichnung`)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
+    geom_line() +
+    xlab("Zeit") + 
+    ylab("Materialmenge") +
+    theme(legend.position = "none") +
+    ggtitle("Alle EinAutDatTyp")
+```
+
+```{r}
+materialverlauf %>%
+  group_by(Jahr=year(EinAusDat)) %>%
+  count()
+
+materialverlauf %>%
+  group_by(Jahr=year(EinAusDat), PjNr) %>%
+  count() %>%
+  plot(type="b")
+```
+```{r}
+materialverlauf %>%
+  group_by(EinAutDatTyp) %>%
+  count() %>%
+  arrange(desc(n))
+```
+
 
 - Inhalt
   - Bestandsverlauf der Materialien über die letzten Jahre
@@ -78,8 +134,121 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezei
   - Korrelations-, Clusteranalysen, Association Rule Mining, ...
 
 ```{r}
-ts_3d_Scheiben = ts(materialverlauf[materialverlauf$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2",], frequency = 12)
-head(ts_3d_Scheiben)
+prepare_data_for_ts <- function (material_name) {
+  # Time Series fixen: Leere Tage auffüllen, doppelte Tage letzten Wert nehmen
+  # Relevante Teilmenge vom Materialverlauf nehmen
+  mat_verlauf_subset <- materialverlauf[materialverlauf$`Artikel-Bezeichnung` == material_name, c("EinAusDat", "Bestand")]
+  
+  # Fehlende Werte entfernen
+  mat_verlauf_subset <- mat_verlauf_subset[!is.na(mat_verlauf_subset$EinAusDat),]
+  
+  # Start- und Enddatum sammeln
+  start_date <- min(mat_verlauf_subset$EinAusDat)
+  print(start_date)
+  end_date <- max(mat_verlauf_subset$EinAusDat)
+  print(end_date)
+  
+  # Neues DateFrame erstellen
+  ts_prep <- data.frame(day=seq(start_date, end_date, by = "day"),
+                               Bestand=0)
+  
+  for (date in ts_prep$day) {
+    bestand <- mat_verlauf_subset[mat_verlauf_subset$EinAusDat == date,"Bestand"]
+    if (nrow(bestand) > 1) {
+      # Mehrere Transaktionen an einem Tag -> letzte nehmen
+      bestand <- bestand[nrow(bestand),]
+    } else if (nrow(bestand) == 0) {
+      # Keine Transaktion an diesem Tag -> letzten Bestand nehmen
+      previous <- ts_prep[ts_prep$day < date, ]
+      
+      # Möglicherweise gibt es keinen vorherigen Wert -> dann auf 0 setzen
+      if (nrow(previous) == 0) {
+        bestand <- 0
+      } else {
+        # Letzten nehmen
+        bestand <- previous[nrow(previous), "Bestand"]
+      }
+      
+    } else {
+      # Nur eine Transaktion -> kann so übernommen werden, keine Aktion nötig
+    }
+    
+    # Wert in DataFrame hinterlegen
+    ts_prep[ts_prep$day == date, "Bestand"] <- bestand
+  }
+  
+  return(ts_prep$Bestand)
+}
+
+```
+
+```{r}
+prep <- prepare_data_for_ts("3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
+ts_3d_Scheiben <- ts(prep, frequency = 365.25)
+plot.ts(ts_3d_Scheiben)
+```
+
+```{r}
+# Create model
+m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
+m_3d_Scheiben
+```
+
+```{r}
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 365)
+
+# DataFrame für Originaldaten
+df_3d_Scheiben_orig = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$x), 1), 
+  bestand = as.numeric(fcast_3d_Scheiben$x), 
+  group = rep("Original", length(fcast_3d_Scheiben$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_3d_Scheiben_fcast = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean), 1), 
+  bestand = c(as.numeric(fcast_3d_Scheiben$fitted), as.numeric(fcast_3d_Scheiben$mean)), 
+  group = rep("Modell", length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean)))
+
+# In ein großes DataFrame zusammenführen
+df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
+
+# Plot
+ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Bestand")
+```
+
+```{r}
+# Zeitreihe erstellen
+prep <- prepare_data_for_ts("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP")
+ts_Bifacial_Glas <- ts(prep, frequency = 365.25)
+
+# Modell erstellen
+m_Bifacial_Glas <- ets(ts_Bifacial_Glas, model="ZZZ")
+m_Bifacial_Glas
+
+# Forecast für ein Jahr
+fcast_Bifacial_Glas = forecast(m_Bifacial_Glas, 365)
+
+# Ergebnis plotten
+df_Bifacial_Glas = rbind(data.frame(
+    period = seq(1, length(fcast_Bifacial_Glas$x), 1), 
+    bestand = as.numeric(fcast_Bifacial_Glas$x), 
+    group = rep("Original", length(fcast_Bifacial_Glas$x))
+    ),
+  data.frame(
+    period = seq(1, length(fcast_Bifacial_Glas$fitted)+length(fcast_Bifacial_Glas$mean), 1), 
+    bestand = c(as.numeric(fcast_Bifacial_Glas$fitted), as.numeric(fcast_Bifacial_Glas$mean)), 
+    group = rep("Modell", length(fcast_Bifacial_Glas$fitted)+length(fcast_Bifacial_Glas$mean))
+  )
+)
+
+# Plot
+ggplot(df_Bifacial_Glas, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Bestand")
 ```
 
 # Entscheidungsassistent
@@ -91,3 +260,32 @@ head(ts_3d_Scheiben)
   - Auf Materialebene Informationen bereitstellen, die den Einkaufenden in den Unternehmensprozessen unterstützt (insb. Vorschläge bezüglich Einkaufslosgrößen und Bestellzeitpunkte)
   - Mehrere Zielgrößen denkbar, z.B. Materialverfügbarkeit, Lagerkosten oder Transportkosten
   - Dazu deskriptive und diagnostische Elemente für Drilldown durch User
+  
+  
+```{r}
+mat_einaustyp <- materialverlauf %>%
+  group_by(Nr=ArtikelNr, Name=`Artikel-Bezeichnung`) %>%
+  summarize(Typen=paste(sort(unique(EinAutDatTyp)), collapse=", "))
+```
+
+
+```{r}
+# aggregate(ArtikelNr ~ PjNr + EinAutDatTyp, data=materialverlauf, unique)
+
+group_pj_typ <- materialverlauf %>%
+  group_by(PjNr, EinAutDatTyp) %>%
+  summarize(ArtikelNr=paste(sort(unique(ArtikelNr)), collapse=", "))
+```
+
+```{r}
+typen <- data.frame(info=unique(materialverlauf$PjInfo)) %>%
+  separate(info, into = c('w1', 'w2', 'w3'), extra = 'merge', remove = FALSE)
+
+typen$typ <- paste(typen$w1, typen$w2)
+
+typen %>%
+  group_by(typ) %>%
+  summarize(n=n(), example=first(info)) %>%
+  arrange(desc(n))
+
+```
