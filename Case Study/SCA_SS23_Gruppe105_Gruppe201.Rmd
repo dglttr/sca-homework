@@ -117,6 +117,11 @@ materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "FINTECH Alu Steckrohr IESR 40 AL (3m)",
                          "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
 materials_b <- materials %>%  filter(`Artikel-Bezeichnung` %in% materials_group_b)
+
+# Klassifizierung der Transaktionen
+materials_b <- materials_b %>%
+  mutate(klasse=if_else(grepl(paste(projekt, collapse='|'), PjInfo), "Projekt", if_else(grepl(paste(handel, collapse='|'), PjInfo), "Handel", if_else(grepl(paste(einkauf, collapse='|'), PjInfo), "Einkauf", "Anderes"))))
+
 article_desc <- materials_b %>% select(ArtikelNr,`Artikel-Bezeichnung`) %>% distinct()
 materials_b <- materials_b %>% mutate(
   ArtikelNr = as.factor(ArtikelNr)
