@@ -400,16 +400,6 @@ materials_b %>%
 
 # Histogramm
 ```
-```{r}
-# Nachfrage pro Tag - Histogramm
-menge_3d_scheiben <- materials_b %>%
-  filter(`Artikel-Bezeichnung` == "3d-U-Scheiben     6,4   M 6         DIN 9021  A2") %>%
-  filter((Menge < 0) & (Menge > -500)) %>%
-  group_by(EinAusDat) %>%
-  summarize(tägl_menge=sum(Menge))
-
-hist(menge_3d_scheiben$tägl_menge, 100)
-```
 
 
 
@@ -436,3 +426,24 @@ difftime(lead(test$EinAusDat), test$EinAusDat, units="days")
 materials_b %>%
   filter(`Artikel-Bezeichnung`=="Rahmenloser Bildhalter Antireflexglas 29,7 x 42")
 ```
+
+# Tägliche Nachfrage
+```{r}
+# Nachfrage pro Tag - Histogramm
+materials_b_tägl_menge <- materials_b %>%
+  filter(Menge < 0) %>%
+  group_by(EinAusDat, `Artikel-Bezeichnung`) %>%
+  summarize(tägl_menge=-sum(Menge))
+
+#hist(menge_3d_scheiben$tägl_menge, 100)
+materials_b_tägl_menge
+```
+```{r}
+materials_b_tägl_menge %>%
+  group_by(`Artikel-Bezeichnung`) %>%
+  summarize(percentile_90 = quantile(tägl_menge, probs=0.9),
+            percentile_95 = quantile(tägl_menge, probs=0.95))
+
+```
+
+
