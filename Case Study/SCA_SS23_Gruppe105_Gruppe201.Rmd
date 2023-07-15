@@ -367,4 +367,56 @@ weekly_avg_picks %>%
   geom_line(aes(x=week ,y=avgpicks_per_week, group= ArtikelNr, col= ArtikelNr))
 ```
 
+# Reichweite
+```{r}
+materials_b %>%
+  arrange(EinAusDat) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  mutate(bis_erster_pick = if_else(lead(EinAutDatTyp) %in% c("BereitDat", "PjPhaseDat"), difftime(lead(EinAusDat), EinAusDat, units="days"), NA)) %>%
+  filter(EinAutDatTyp == "geliefertAm") %>%
+  summarize(mean_bis_pick=mean(bis_erster_pick, na.rm=TRUE)) # NA remove for last entry
+  #select(`Artikel-Bezeichnung`, EinAusDat, BstDat, EinAutDatTyp, bis_erster_pick) %>%
+  #filter(ArtikelNr == "6201" & is.na(bis_erster_pick))
 
+# Histogramm
+# Zeit zwischen Picks
+# Mit WBZ gegenüberstellen
+```
+
+```{r}
+materials_b %>%
+  arrange(EinAusDat, ArtikelNr) %>%
+  filter(EinAutDatTyp == "geliefertAm") %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  mutate(bis_n_bestl = difftime(lead(EinAusDat), EinAusDat, units="days")) %>%
+  summarize(mean_bis_bestl=mean(bis_n_bestl, na.rm=TRUE)) # NA remove for last entry
+  #select(`Artikel-Bezeichnung`, EinAusDat, BstDat, EinAutDatTyp, bis_erster_pick) %>%
+  #filter(ArtikelNr == "6201" & is.na(bis_erster_pick))
+
+# Histogramm
+```
+
+
+```{r}
+materials_b %>%
+  arrange(EinAusDat) %>%
+  filter(ArtikelNr == "6201" & EinAusDat >= "2023-01-01")
+
+test <- materials_b
+```
+
+
+```{r}
+test$bis_erster_pick <- difftime(lead(test$EinAusDat), test$EinAusDat, units="days")
+test %>% arrange(EinAusDat) %>% filter(ArtikelNr=="29523") %>% select(`Artikel-Bezeichnung`, EinAusDat, BstDat, EinAutDatTyp, bis_erster_pick)
+```
+
+```{r}
+difftime(lead(test$EinAusDat), test$EinAusDat, units="days")
+```
+
+
+```{r}
+materials_b %>%
+  filter(`Artikel-Bezeichnung`=="Rahmenloser Bildhalter Antireflexglas 29,7 x 42")
+```
