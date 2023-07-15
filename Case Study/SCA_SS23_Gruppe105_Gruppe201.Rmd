@@ -651,8 +651,9 @@ df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
 # Plot
 ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
   geom_line()+
-  xlab("Periode") + 
-  ylab("Bestand")
+  xlab("Periode") +
+  ylab("Menge") +
+  ggtitle("Gesamtmodell (Projekt + Großhandel")
 ```
 
 ## Projektbetrieb
@@ -694,7 +695,8 @@ df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
 ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
   geom_line()+
   xlab("Periode") + 
-  ylab("Bestand")
+  ylab("Menge") +
+  ggtitle("Projektbasiert")
 ```
 
 ## Großhandel
@@ -736,5 +738,6 @@ df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
 ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
   geom_line()+
   xlab("Periode") + 
-  ylab("Bestand")
+  ylab("Menge") +
+  ggtitle("Großhandel")
 ```
