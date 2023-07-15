@@ -110,7 +110,7 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 ```{r}
 
 materials <- MBG_Materialverlauf_20230612 <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
-materials_group_b <- gruppe_b_materialien <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
+materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
                          "Kabelbinder 280x4,5 mm schwarz",
                          "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
