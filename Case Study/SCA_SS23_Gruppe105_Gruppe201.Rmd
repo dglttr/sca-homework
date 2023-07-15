@@ -110,8 +110,13 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 ```{r}
 
 materials <- MBG_Materialverlauf_20230612 <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
-materials_group_b <- c(29523,26535,21866,2628,26384,6201)
-materials_b <- materials %>%  filter(ArtikelNr %in% materials_group_b)
+materials_group_b <- gruppe_b_materialien <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
+                         "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
+                         "Kabelbinder 280x4,5 mm schwarz",
+                         "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
+                         "FINTECH Alu Steckrohr IESR 40 AL (3m)",
+                         "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
+materials_b <- materials %>%  filter(`Artikel-Bezeichnung` %in% materials_group_b)
 article_desc <- materials_b %>% select(ArtikelNr,`Artikel-Bezeichnung`) %>% distinct()
 materials_b <- materials_b %>% mutate(
   ArtikelNr = as.factor(ArtikelNr)
@@ -369,7 +374,7 @@ weekly_avg_picks %>%
 
 # Reichweite
 ```{r}
-materials_b %>%
+materials_b_1st_pick <- materials_b %>%
   arrange(EinAusDat) %>%
   group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
   mutate(bis_erster_pick = if_else(lead(EinAutDatTyp) %in% c("BereitDat", "PjPhaseDat"), difftime(lead(EinAusDat), EinAusDat, units="days"), NA)) %>%
@@ -395,6 +400,17 @@ materials_b %>%
 
 # Histogramm
 ```
+```{r}
+# Nachfrage pro Tag - Histogramm
+menge_3d_scheiben <- materials_b %>%
+  filter(`Artikel-Bezeichnung` == "3d-U-Scheiben     6,4   M 6         DIN 9021  A2") %>%
+  filter((Menge < 0) & (Menge > -500)) %>%
+  group_by(EinAusDat) %>%
+  summarize(tägl_menge=sum(Menge))
+
+hist(menge_3d_scheiben$tägl_menge, 100)
+```
+
 
 
 ```{r}
