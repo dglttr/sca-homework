@@ -68,6 +68,7 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezei
     ylab("Materialbestand") +
     theme(legend.position = "none")
 ```
+
 ```{r}
 "DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
@@ -93,13 +94,14 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=cum_sum, fill=`Artikel-Bezei
     theme(legend.position = "none") +
     ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
 ```
+
 ```{r}
 materials_B_aus <- mat_verlauf_gruppeB %>%
   filter(Menge < 0) %>%
   mutate(cum_sum_aus = -cumsum(Menge)) %>%
 
 # Menge
-ggplot(data=materials_B_aus, aes(x=EinAusDat, y=-Menge, fill=`Artikel-Bezeichnung`)) +
+ggplot(data=materials_B_aus, aes(x=EinAusDat, y=Menge, fill=`Artikel-Bezeichnung`)) +
     facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
     geom_line() +
     xlab("Zeit") + 
@@ -216,18 +218,20 @@ prepare_data_for_ts <- function (material_name) {
 ```{r}
 #prep <- prepare_data_for_ts("3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
 
+materials_B_aus <- mat_verlauf_gruppeB %>%
+  filter(Menge < 0) %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
 mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
 ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
 plot.ts(ts_3d_Scheiben)
-```
 
-```{r}
 # Create model
 m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
 m_3d_Scheiben
-```
 
-```{r}
 fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
 
 # DataFrame für Originaldaten
@@ -294,7 +298,6 @@ ggplot(df_Bifacial_Glas, aes(x = period, y = bestand, colour = group)) +
   - Mehrere Zielgrößen denkbar, z.B. Materialverfügbarkeit, Lagerkosten oder Transportkosten
   - Dazu deskriptive und diagnostische Elemente für Drilldown durch User
   
-  
 ```{r}
 mat_einaustyp <- materialverlauf %>%
   group_by(Nr=ArtikelNr, Name=`Artikel-Bezeichnung`) %>%
@@ -321,4 +324,417 @@ typen %>%
   summarize(n=n(), example=first(info)) %>%
   arrange(desc(n))
 
+```
+  
+
+# Einlesen
+```{r setup, include=FALSE}
+# Laden von Packages
+library(readxl)
+library(tidyverse)
+library(lubridate)
+library(forecast)
+library(zoo)
+library(scales)
+library(glue)
+library(ggplot2)
+library(Metrics)
+library(knitr)
+library(prophet)
+opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r}
+
+materials <- MBG_Materialverlauf_20230612 <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
+materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
+                         "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
+                         "Kabelbinder 280x4,5 mm schwarz",
+                         "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
+                         "FINTECH Alu Steckrohr IESR 40 AL (3m)",
+                         "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
+materials_b <- materials %>%  filter(`Artikel-Bezeichnung` %in% materials_group_b)
+
+# Klassifizierung der Transaktionen
+materials_b <- materials_b %>%
+  mutate(klasse=if_else(grepl(paste(projekt, collapse='|'), PjInfo), "Projekt", if_else(grepl(paste(handel, collapse='|'), PjInfo), "Handel", if_else(grepl(paste(einkauf, collapse='|'), PjInfo), "Einkauf", "Anderes"))))
+
+article_desc <- materials_b %>% select(ArtikelNr,`Artikel-Bezeichnung`) %>% distinct()
+materials_b <- materials_b %>% mutate(
+  ArtikelNr = as.factor(ArtikelNr)
+)
+#negative Bestände sind Bedarf in der Zukunft (Bestellungen)
+article_desc
+```
+
+```{r}
+article_description <- materials %>% select(ArtikelNr,`Artikel-Bezeichnung`) %>% distinct()
+article_description
+```
+
+```{r}
+article_PjInfo <- materials_b %>% select(PjNr,`PjInfo`) %>% distinct()
+article_PjInfo
+```
+
+```{r}
+materials_b %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=Bestand,group=ArtikelNr, color=ArtikelNr
+                ))
+
+```
+
+
+```{r}
+materials_b %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=Menge,group=ArtikelNr, color=ArtikelNr
+                ))
+```
+
+```{r}
+materials_b %>% group_by(ArtikelNr) %>% summarise(n())
+```
+
+```{r}
+materials_b %>% select(EinAutDatTyp) %>% distinct()
+```
+```{r}
+materials %>% select(EinAutDatTyp) %>% distinct()
+```
+
+```{r}
+materials_b %>% select(PjInfo) %>% distinct()
+
+```
+
+
+```{r}
+materials_b %>% group_by(ArtikelNr,EinAutDatTyp, month = lubridate::floor_date(EinAusDat, 'month')) %>% summarise(volume=sum(Menge)) %>% ggplot(aes(x=month,y=volume,group=EinAutDatTyp, color=EinAutDatTyp
+                )) + geom_line() +   facet_wrap(~ArtikelNr, scales = 'free_y' )
+
+```
+
+```{r}
+library(sjPlot)
+plots <- materials_b %>% group_by(ArtikelNr) %>% nest %>% 
+  mutate(plot = map2(
+    data, ArtikelNr, 
+    ~ ggplot(data = .x, aes(x=EinAusDat,y=Menge,group=EinAutDatTyp, color=EinAutDatTyp)) +
+      ggtitle(glue("ArtikelNr: {.y}")) +
+      geom_line())) 
+
+print(plots$plot)
+```
+```{r}
+mat_verlauf <- materials_b %>%
+  filter(EinAutDatTyp == "geliefertAm" | EinAutDatTyp == "BereitDat" | EinAutDatTyp == "PjPhaseDat") %>%
+  group_by(`ArtikelNr`) %>%
+  mutate(cum_sum = cumsum(Menge))
+  
+
+ggplot(data=mat_verlauf, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
+    geom_line() +
+    xlab("Zeit") + 
+    ylab("Materialmenge") +
+    theme(legend.position = "none") +
+    ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
+```
+
+
+```{r}
+materials_b <- materials_b %>%  group_by(ArtikelNr) %>%  mutate(Menge_diff = Menge - lag(Menge)) 
+```
+
+```{r}
+materials_b %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=Menge_diff,group=ArtikelNr, color=ArtikelNr
+                ))
+```
+```{r}
+materials_b <- materials_b %>% group_by(ArtikelNr) %>% mutate(Baseline = mean(Menge))
+```
+
+```{r}
+evaluation = data.frame(Model = "Baseline",
+                        MFE = numeric(1),
+                        MAE = numeric(1),
+                        MSE = numeric(1),
+                        sMAPE = numeric(1))
+# MFE berechnen
+evaluation[evaluation$Model == "Baseline",] $MFE = mean(materials_b$Menge - materials_b$Baseline)
+
+evaluation[evaluation$Model == "Baseline",] $MAE = mean(abs(materials_b$Menge - materials_b$Baseline))
+
+
+evaluation[evaluation$Model == "Baseline",] $MSE = mean((materials_b$Menge - materials_b$Baseline)^2)
+
+
+evaluation[evaluation$Model == "Baseline",] $sMAPE = smape(materials_b$Menge, materials_b$Baseline)
+
+evaluation
+
+```
+
+
+```{r}
+# Berechnen des Durchschnitts nach Wochen
+
+weekly_Menge <- materials_b %>%
+  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  summarise(Menge_per_week= sum(Menge)) 
+```
+
+```{r}
+# Plot nach Wochen
+weekly_Menge %>% 
+  ggplot() +
+  geom_line(aes(x=week,y=Menge_per_week, group=ArtikelNr, color=ArtikelNr
+                ))
+```
+
+
+```{r}
+# Berechnen des Durchschnitts nach Monate 
+monthly_mean <- weekly_Menge %>%  group_by(ArtikelNr, month=month(week)) %>%
+  mutate(mean_Menge= mean(Menge_per_week))
+```
+
+```{r}
+monthly_mean %>% 
+  ggplot() +
+  geom_line(aes(x=month,y=mean_Menge, group=ArtikelNr, color=ArtikelNr
+                ))
+```
+
+
+
+
+```{r}
+picks <- materials_b %>% mutate(picks = if_else(Menge < 0, abs(Menge), 0), lot_size = if_else(Menge >= 0, abs(Menge), 0))
+
+```
+
+```{r}
+picks %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=picks, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y'
+                ))
+```
+
+```{r}
+picks %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=lot_size, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y'
+                ))
+```
+
+```{r}
+picks %>% filter(ArtikelNr == 29523, ) %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=picks, col= 'red')) +
+  geom_line(aes(x=EinAusDat,y=lot_size, col='green'))
+```
+```{r}
+picks %>% filter(ArtikelNr == 29523,lot_size !=0 ) %>% 
+  ggplot(aes(x=lot_size)) +
+  geom_histogram(binwidth=.1, colour="black", fill="white")+
+  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 26535, ) %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=lot_size))
+```
+
+
+```{r}
+picks %>% filter(ArtikelNr == 26535,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 21866,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 2628,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 26384,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 6201,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(lot_size !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(avg_lot = mean(lot_size))
+```
+```{r}
+# Berechnen des Durchschnitts nach Wochen
+weekly_picks <- picks %>%
+  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  summarise(picks_per_week= sum(picks)) 
+```
+
+```{r}
+weekly_avg_picks <- picks %>%
+  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  summarise(avgpicks_per_week= mean(picks)) 
+```
+
+
+```{r}
+weekly_meanpick <- weekly_picks %>%  group_by(ArtikelNr) %>%
+  mutate(mean_pick = mean(picks_per_week))
+```
+
+```{r}
+weekly_picks %>% 
+  ggplot() +
+  geom_line(aes(x=week ,y=picks_per_week, group= ArtikelNr, col= ArtikelNr))
+```
+```{r}
+weekly_avg_picks %>% 
+  ggplot() +
+  geom_line(aes(x=week ,y=avgpicks_per_week, group= ArtikelNr, col= ArtikelNr))
+```
+
+# Modellierung
+## Gesamtmodell
+```{r}
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
+ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
+plot.ts(ts_3d_Scheiben)
+
+# Create model
+m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
+m_3d_Scheiben
+
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
+
+# DataFrame für Originaldaten
+df_3d_Scheiben_orig = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$x), 1), 
+  bestand = as.numeric(fcast_3d_Scheiben$x), 
+  group = rep("Original", length(fcast_3d_Scheiben$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_3d_Scheiben_fcast = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean), 1), 
+  bestand = c(as.numeric(fcast_3d_Scheiben$fitted), as.numeric(fcast_3d_Scheiben$mean)), 
+  group = rep("Modell", length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean)))
+
+# In ein großes DataFrame zusammenführen
+df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
+
+# Plot
+ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Bestand")
+```
+
+## Projektbetrieb
+```{r}
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  ## CHANGE MADE HERE ##
+  filter(klasse == "Projekt") %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
+ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
+plot.ts(ts_3d_Scheiben)
+
+# Create model
+m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
+m_3d_Scheiben
+
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
+
+# DataFrame für Originaldaten
+df_3d_Scheiben_orig = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$x), 1), 
+  bestand = as.numeric(fcast_3d_Scheiben$x), 
+  group = rep("Original", length(fcast_3d_Scheiben$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_3d_Scheiben_fcast = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean), 1), 
+  bestand = c(as.numeric(fcast_3d_Scheiben$fitted), as.numeric(fcast_3d_Scheiben$mean)), 
+  group = rep("Modell", length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean)))
+
+# In ein großes DataFrame zusammenführen
+df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
+
+# Plot
+ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Bestand")
+```
+
+## Großhandel
+```{r}
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  ## CHANGE MADE HERE ##
+  filter(klasse == "Handel") %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
+ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
+plot.ts(ts_3d_Scheiben)
+
+# Create model
+m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
+m_3d_Scheiben
+
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
+
+# DataFrame für Originaldaten
+df_3d_Scheiben_orig = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$x), 1), 
+  bestand = as.numeric(fcast_3d_Scheiben$x), 
+  group = rep("Original", length(fcast_3d_Scheiben$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_3d_Scheiben_fcast = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean), 1), 
+  bestand = c(as.numeric(fcast_3d_Scheiben$fitted), as.numeric(fcast_3d_Scheiben$mean)), 
+  group = rep("Modell", length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean)))
+
+# In ein großes DataFrame zusammenführen
+df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
+
+# Plot
+ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Bestand")
 ```
