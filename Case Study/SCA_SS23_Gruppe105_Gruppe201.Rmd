@@ -93,12 +93,22 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=cum_sum, fill=`Artikel-Bezei
     theme(legend.position = "none") +
     ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
 ```
-
-
 ```{r}
-mat_verlauf_gruppeB <- mat_verlauf_gruppeB %>% mutate(cum_sum = cumsum(Menge))
+materials_B_aus <- mat_verlauf_gruppeB %>%
+  filter(Menge < 0) %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
 
-ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=cum_sum, fill=`Artikel-Bezeichnung`)) +
+# Menge
+ggplot(data=materials_B_aus, aes(x=EinAusDat, y=-Menge, fill=`Artikel-Bezeichnung`)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
+    geom_line() +
+    xlab("Zeit") + 
+    ylab("Materialmenge") +
+    theme(legend.position = "none") +
+    ggtitle("Alle EinAutDatTyp")
+
+# cum_sum_aus
+ggplot(data=materials_B_aus, aes(x=EinAusDat, y=cum_sum_aus, fill=`Artikel-Bezeichnung`)) +
     facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
     geom_line() +
     xlab("Zeit") + 
@@ -106,6 +116,27 @@ ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=cum_sum, fill=`Artikel-Bezei
     theme(legend.position = "none") +
     ggtitle("Alle EinAutDatTyp")
 ```
+
+
+```{r}
+materials_B_aus <- mat_verlauf_gruppeB %>%
+  filter(Menge < 0) %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+# Menge pro Monat
+ggplot(data=materials_B_aus, aes(x=month, y=menge_pro_monat, fill=`Artikel-Bezeichnung`)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
+    geom_col() +
+    xlab("Zeit") + 
+    ylab("Materialmenge") +
+    theme(legend.position = "none") +
+    ggtitle("Alle EinAutDatTyp")
+```
+
+
+
 
 ```{r}
 materialverlauf %>%
@@ -183,8 +214,10 @@ prepare_data_for_ts <- function (material_name) {
 ```
 
 ```{r}
-prep <- prepare_data_for_ts("3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
-ts_3d_Scheiben <- ts(prep, frequency = 365.25)
+#prep <- prepare_data_for_ts("3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
+
+mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
+ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
 plot.ts(ts_3d_Scheiben)
 ```
 
@@ -195,7 +228,7 @@ m_3d_Scheiben
 ```
 
 ```{r}
-fcast_3d_Scheiben = forecast(m_3d_Scheiben, 365)
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
 
 # DataFrame für Originaldaten
 df_3d_Scheiben_orig = data.frame(
