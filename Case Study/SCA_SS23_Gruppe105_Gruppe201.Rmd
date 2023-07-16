@@ -439,3 +439,90 @@ ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
   ggtitle("Großhandel")  +
   theme(legend.title = element_blank())
 ```
+
+# Reichweite
+## Zeit bis zum ersten Pick
+```{r}
+# Reichweite bis 1. Pick = Zeit zwischen Bestelleingang (geliefertAm) und erster Transaktion (BereitDat, PjPhaseDat)
+materials_b_1st_pick <- materials_b %>%
+  # Nach Datum sortieren
+  arrange(EinAusDat) %>%
+  # Nach Material gruppieren
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  mutate(bis_erster_pick = if_else(lead(EinAutDatTyp) %in% c("BereitDat", "PjPhaseDat"), as.numeric(difftime(lead(EinAusDat), EinAusDat, units="days")), NA)) %>%
+  filter(EinAutDatTyp == "geliefertAm")
+  # summarize(mean_bis_pick=mean(bis_erster_pick, na.rm=TRUE)) # NA remove for last entry
+
+# Histogramm
+ggplot(materials_b_1st_pick, aes(x=bis_erster_pick)) +
+    geom_histogram(color="black", fill="white") +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0)) +
+    ggtitle("Verteilung der Zeit von Bestelleingang bis zum ersten Pick [in Tagen]")
+
+# Zeit zwischen Picks
+# Mit WBZ gegenüberstellen
+```
+
+## Reichweite bis nächste Bestellung
+```{r}
+# = Zeit zwischen Bestelleingang und nächster Bestellung (BstDat -> wenn wir bestellen, nicht Eingang)
+materials_b_n_bestellung <- materials_b %>%
+  arrange(EinAusDat, ArtikelNr) %>%
+  filter(EinAutDatTyp == "geliefertAm") %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  mutate(bis_n_bestl = as.numeric(difftime(lead(BstDat), EinAusDat, units="days")))
+  # summarize(mean_bis_bestl=mean(bis_n_bestl, na.rm=TRUE)) # NA remove for last entry
+
+# Histogramm
+ggplot(materials_b_n_bestellung, aes(x=bis_n_bestl)) +
+    geom_histogram(color="black", fill="white") +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0)) +
+    ggtitle("Verteilung der Reichweite von Bestelleingang bis zur nächsten Bestellung [in Tagen]")
+```
+
+# Nachfrage aggregiert nach Zeit
+## Tägliche Nachfrage
+```{r}
+# Nachfrage (Lagerausgänge = negative Werte) pro Tag
+materials_b_tägl_menge <- materials_b %>%
+  filter(Menge < 0) %>%
+  group_by(EinAusDat, `Artikel-Bezeichnung`) %>%
+  summarize(tägl_menge=-sum(Menge))
+
+# 90% und 95% Perzentile
+materials_b_tägl_menge %>%
+  group_by(`Artikel-Bezeichnung`) %>%
+  summarize(percentile_90 = quantile(tägl_menge, probs=0.9),
+            percentile_95 = quantile(tägl_menge, probs=0.95))
+
+# Histogramm
+ggplot(materials_b_tägl_menge, aes(x=tägl_menge)) +
+    geom_histogram(color="black", fill="white") +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0)) +
+    ggtitle("Verteilung der täglichen Ausgangsmengen (Nachfrage)")
+```
+
+## Monatliche Nachfrage
+```{r}
+# Menge aggregiert auf Monatsebene (lassen sich Trends erkennen?)
+materials_b_monatl_menge <- materials_b %>%
+  filter(Menge < 0) %>%
+  group_by(month=as.yearmon(EinAusDat), `Artikel-Bezeichnung`) %>%
+  summarize(monatl_menge=-sum(Menge))
+
+ggplot(data=materials_b_monatl_menge, aes(x=month, y=monatl_menge)) +
+  geom_line() +
+  facet_wrap(~`Artikel-Bezeichnung`, scales = 'free_y') +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  # Rotate Axis Ticks
+  #theme(axis.text.x = element_text(angle = 90)) +
+  ylab("Monatliche Nachfrage") +
+  geom_smooth(method=lm)
+```
