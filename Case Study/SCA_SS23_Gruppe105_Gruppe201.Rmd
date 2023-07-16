@@ -9,88 +9,7 @@ header-includes:
   \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
 ---
 
-```{r setup, include=FALSE}
-# Laden von Packages
-library(tidyverse)
-library(readxl)
-library(lubridate)
-library(forecast)
-library(zoo)
-library(scales)
-library(ggplot2)
-library(knitr)
-library(GGally)
-opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
-```
-
 # Datenaufbereitung
-```{r}
-materialverlauf <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
-
-# Datentypen konvertieren
-materialverlauf$ArtikelNr <- as.factor(materialverlauf$ArtikelNr)
-materialverlauf$`Artikel-Bezeichnung` <- as.factor(materialverlauf$`Artikel-Bezeichnung`)
-materialverlauf$EinAutDatTyp <- as.factor(materialverlauf$EinAutDatTyp)
-materialverlauf$PjNr <- as.factor(materialverlauf$PjNr)
-materialverlauf$PjInfo <- as.factor(materialverlauf$PjInfo)
-materialverlauf$ORGAKzl <- as.factor(materialverlauf$ORGAKzl)
-materialverlauf$EinAusDat <- as.Date(materialverlauf$EinAusDat)
-materialverlauf$BstDat <- as.Date(materialverlauf$BstDat)
-
-head(materialverlauf) %>% kable(caption="Ausgabe der ersten 6 Zeilen des Materialverlaufs")
-```
-```{r}
-# Zusammenfassung über Daten ausgeben
-summary(materialverlauf)
-```
-
-```{r}
-gruppe_b_materialien <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
-                         "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
-                         "Kabelbinder 280x4,5 mm schwarz",
-                         "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
-                         "FINTECH Alu Steckrohr IESR 40 AL (3m)",
-                         "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
-
-mat_verlauf_gruppeB <- materialverlauf[materialverlauf$`Artikel-Bezeichnung` %in% gruppe_b_materialien,]
-summary(mat_verlauf_gruppeB)
-```
-
-# Datenanalyse
-
-## Visualisierung
-```{r}
-# Visualisierung des Bestandes
-ggplot(data=mat_verlauf_gruppeB, aes(x=EinAusDat, y=Bestand, fill=`Artikel-Bezeichnung`)) +
-    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
-    geom_point(size=0.3) +
-    xlab("Zeit") + 
-    ylab("Materialbestand") +
-    theme(legend.position = "none")
-```
-
-- Inhalt
-  - Bestandsverlauf der Materialien über die letzten Jahre
-  - Einkaufs- und Abruflosgrößen
-- Methoden
-  - Statistiken
-  - Visualisierungen
-  - Korrelations-, Clusteranalysen, Association Rule Mining, ...
-
-# Entscheidungsassistent
-- Persona
-  - Für den Einkauf
-- Funktionalitäten
-  - Relevante Informationen auf Materialebene bereitstellen
-  - Vorschläge bezüglich Einkaufslosgröße und Beschaffungsstrategie machen
-  - Auf Materialebene Informationen bereitstellen, die den Einkaufenden in den Unternehmensprozessen unterstützt (insb. Vorschläge bezüglich Einkaufslosgrößen und Bestellzeitpunkte)
-  - Mehrere Zielgrößen denkbar, z.B. Materialverfügbarkeit, Lagerkosten oder Transportkosten
-  - Dazu deskriptive und diagnostische Elemente für Drilldown durch User
-  
-  
-  
-
-
 ```{r setup, include=FALSE}
 # Laden von Packages
 library(readxl)
@@ -108,8 +27,20 @@ opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning =
 ```
 
 ```{r}
+# Daten einlesen
+materials <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
 
-materials <- MBG_Materialverlauf_20230612 <- read_excel("data/MBG_Materialverlauf_20230612.xlsx")
+# Datentypen konvertieren
+materials$ArtikelNr <- as.factor(materials$ArtikelNr)
+materials$`Artikel-Bezeichnung` <- as.factor(materials$`Artikel-Bezeichnung`)
+materials$EinAutDatTyp <- as.factor(materials$EinAutDatTyp)
+materials$PjNr <- as.factor(materials$PjNr)
+materials$PjInfo <- as.factor(materials$PjInfo)
+materials$ORGAKzl <- as.factor(materials$ORGAKzl)
+materials$EinAusDat <- as.Date(materials$EinAusDat)
+materials$BstDat <- as.Date(materials$BstDat)
+
+# Nur relevante Materialien für Gruppe B
 materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
                          "Kabelbinder 280x4,5 mm schwarz",
@@ -118,28 +49,19 @@ materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
 materials_b <- materials %>%  filter(`Artikel-Bezeichnung` %in% materials_group_b)
 
-# Klassifizierung der Transaktionen
+# Klassifizierung der Transaktionen: Projekt, Handel, Einkauf - nach Keywords
+projekt <- c('PV-Realisierung', 'PV: Realisierung', 'PV: Tankstelle', 'PV: ET', 'PV: EDEKA', 'PV: MBG', 'PV: MO', 'PV: SolarSun', 'PV-Anlage: Realisierung', 'PV: 15,39', 'PV: 175x', 'PV: 99,83', 'PV: EFH')
+handel <- c('PV-Materialverkauf', 'Groß- und')
+einkauf <- c('Einkauf')
+
 materials_b <- materials_b %>%
   mutate(klasse=if_else(grepl(paste(projekt, collapse='|'), PjInfo), "Projekt", if_else(grepl(paste(handel, collapse='|'), PjInfo), "Handel", if_else(grepl(paste(einkauf, collapse='|'), PjInfo), "Einkauf", "Anderes"))))
 
-article_desc <- materials_b %>% select(ArtikelNr,`Artikel-Bezeichnung`) %>% distinct()
-materials_b <- materials_b %>% mutate(
-  ArtikelNr = as.factor(ArtikelNr)
-)
-#negative Bestände sind Bedarf in der Zukunft (Bestellungen)
-article_desc
+materials_b
 ```
 
-```{r}
-article_description <- materials %>% select(ArtikelNr,`Artikel-Bezeichnung`) %>% distinct()
-article_description
-```
-
-```{r}
-article_PjInfo <- materials_b %>% select(PjNr,`PjInfo`) %>% distinct()
-article_PjInfo
-```
-
+# Explorative Datenanalyse
+## Plot: Bestand über Zeit
 ```{r}
 materials_b %>% 
   ggplot() +
@@ -148,7 +70,7 @@ materials_b %>%
 
 ```
 
-
+## Plot: Menge über Zeit
 ```{r}
 materials_b %>% 
   ggplot() +
@@ -156,40 +78,49 @@ materials_b %>%
                 ))
 ```
 
+## Häufigkeit Materialien
 ```{r}
-materials_b %>% group_by(ArtikelNr) %>% summarise(n())
+materials_b %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n))
+```
+
+## Häufigkeit EinAusDatTyp
+```{r}
+materials_b %>% group_by(EinAutDatTyp) %>% count() %>% arrange(desc(n))
+```
+
+## Häufigkeiten EinAusDatTyp über alle Materialien
+```{r}
+materials %>% group_by(EinAutDatTyp) %>% count() %>% arrange(desc(n))
+```
+
+## Häufigkeit Projekte
+```{r}
+materials_b %>% group_by(PjInfo) %>% count() %>% arrange(desc(n))
+```
+
+## Plot: Mengen nach EinAusDatTyp
+```{r}
+materials_b %>% group_by(`Artikel-Bezeichnung`,EinAutDatTyp, month = lubridate::floor_date(EinAusDat, 'month')) %>%
+  summarise(volume=sum(Menge)) %>%
+  ggplot(aes(x=month,y=volume,group=EinAutDatTyp, color=EinAutDatTyp
+                )) +
+    geom_line() +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free_y')
 ```
 
 ```{r}
-materials_b %>% select(EinAutDatTyp) %>% distinct()
-```
-```{r}
-materials %>% select(EinAutDatTyp) %>% distinct()
-```
-
-```{r}
-materials_b %>% select(PjInfo) %>% distinct()
-
-```
-
-
-```{r}
-materials_b %>% group_by(ArtikelNr,EinAutDatTyp, month = lubridate::floor_date(EinAusDat, 'month')) %>% summarise(volume=sum(Menge)) %>% ggplot(aes(x=month,y=volume,group=EinAutDatTyp, color=EinAutDatTyp
-                )) + geom_line() +   facet_wrap(~ArtikelNr, scales = 'free_y' )
-
-```
-
-```{r}
+# Einzelne Plots pro Artikel für Mengen nach EinAusDatTyp
 library(sjPlot)
-plots <- materials_b %>% group_by(ArtikelNr) %>% nest %>% 
+plots <- materials_b %>% group_by(`Artikel-Bezeichnung`) %>% nest %>% 
   mutate(plot = map2(
-    data, ArtikelNr, 
+    data, `Artikel-Bezeichnung`, 
     ~ ggplot(data = .x, aes(x=EinAusDat,y=Menge,group=EinAutDatTyp, color=EinAutDatTyp)) +
-      ggtitle(glue("ArtikelNr: {.y}")) +
+      ggtitle(glue("{.y}")) +
       geom_line())) 
 
 print(plots$plot)
 ```
+## Plot: Korrigierter Bestand (cumsum)
 ```{r}
 mat_verlauf <- materials_b %>%
   filter(EinAutDatTyp == "geliefertAm" | EinAutDatTyp == "BereitDat" | EinAutDatTyp == "PjPhaseDat") %>%
@@ -209,6 +140,7 @@ ggplot(data=mat_verlauf, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
 
 ```{r}
 materials_b <- materials_b %>%  group_by(ArtikelNr) %>%  mutate(Menge_diff = Menge - lag(Menge)) 
+materials_b
 ```
 
 ```{r}
