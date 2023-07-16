@@ -137,7 +137,7 @@ ggplot(data=mat_verlauf, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
     ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
 ```
 
-
+## Differenzen der Menge zwischen Transaktionen
 ```{r}
 materials_b <- materials_b %>%  group_by(ArtikelNr) %>%  mutate(Menge_diff = Menge - lag(Menge)) 
 materials_b
@@ -149,41 +149,15 @@ materials_b %>%
   geom_line(aes(x=EinAusDat,y=Menge_diff,group=ArtikelNr, color=ArtikelNr
                 ))
 ```
-```{r}
-materials_b <- materials_b %>% group_by(ArtikelNr) %>% mutate(Baseline = mean(Menge))
-```
-
-```{r}
-evaluation = data.frame(Model = "Baseline",
-                        MFE = numeric(1),
-                        MAE = numeric(1),
-                        MSE = numeric(1),
-                        sMAPE = numeric(1))
-# MFE berechnen
-evaluation[evaluation$Model == "Baseline",] $MFE = mean(materials_b$Menge - materials_b$Baseline)
-
-evaluation[evaluation$Model == "Baseline",] $MAE = mean(abs(materials_b$Menge - materials_b$Baseline))
-
-
-evaluation[evaluation$Model == "Baseline",] $MSE = mean((materials_b$Menge - materials_b$Baseline)^2)
-
-
-evaluation[evaluation$Model == "Baseline",] $sMAPE = smape(materials_b$Menge, materials_b$Baseline)
-
-evaluation
-
-```
-
-
+## Durchschnitte der Menge (Nachfrage und Lieferungen gemeinsam)
+### Plot: Wochendurchschnitt der Menge
 ```{r}
 # Berechnen des Durchschnitts nach Wochen
 
 weekly_Menge <- materials_b %>%
   group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
   summarise(Menge_per_week= sum(Menge)) 
-```
 
-```{r}
 # Plot nach Wochen
 weekly_Menge %>% 
   ggplot() +
@@ -191,60 +165,70 @@ weekly_Menge %>%
                 ))
 ```
 
-
+### Plot: Monatsdurchschnitt der Menge
 ```{r}
-# Berechnen des Durchschnitts nach Monate 
+# Berechnen des Durchschnitts nach Monaten
 monthly_mean <- weekly_Menge %>%  group_by(ArtikelNr, month=month(week)) %>%
   mutate(mean_Menge= mean(Menge_per_week))
-```
 
-```{r}
 monthly_mean %>% 
   ggplot() +
   geom_line(aes(x=month,y=mean_Menge, group=ArtikelNr, color=ArtikelNr
                 ))
 ```
 
-
-
-
+# Picks und Losgrößen
 ```{r}
 picks <- materials_b %>% mutate(picks = if_else(Menge < 0, abs(Menge), 0), lot_size = if_else(Menge >= 0, abs(Menge), 0))
-
 ```
 
+## Plot: Gepickte Menge (Nachfrage)
 ```{r}
 picks %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=picks, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y'
-                ))
+  geom_line(aes(x=EinAusDat,y=picks, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y')) +
+  ylab("Gepickte Menge")
 ```
 
+## Plot: Gelieferte Menge/Losgröße (Lieferungen)
 ```{r}
 picks %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=lot_size, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y'
-                ))
+  geom_line(aes(x=EinAusDat,y=lot_size, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y')) +
+  ylab("Gelieferte Menge")
 ```
 
+## Pickgröße vs. Bestell-Losgröße
 ```{r}
 picks %>% filter(ArtikelNr == 29523, ) %>% 
   ggplot() +
   geom_line(aes(x=EinAusDat,y=picks, col= 'red')) +
   geom_line(aes(x=EinAusDat,y=lot_size, col='green'))
 ```
-```{r}
-picks %>% filter(ArtikelNr == 29523,lot_size !=0 ) %>% 
-  ggplot(aes(x=lot_size)) +
-  geom_histogram(binwidth=.1, colour="black", fill="white")+
-  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
-```
+
 ```{r}
 picks %>% filter(ArtikelNr == 26535, ) %>% 
   ggplot() +
   geom_line(aes(x=EinAusDat,y=lot_size))
 ```
 
+## Picks vs. Losgröße nach Artikel
+```{r}
+picks %>% filter(lot_size != 0) %>%
+  ggplot(aes(x=lot_size)) +
+  geom_histogram(colour="black", fill="white")+
+  #geom_vline(data=picks %>% group_by(`Artikel-Bezeichnung`) %>% summarize(mean_lot_size=mean(lot_size, na.rm=TRUE)), aes(xintercept=mean_lot_size), color="red", linetype="dashed", size=0.75) +
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0))
+```
+
+```{r}
+picks %>% filter(ArtikelNr == 29523,lot_size !=0 ) %>% 
+  ggplot(aes(x=lot_size)) +
+  geom_histogram(binwidth=.1, colour="black", fill="white")+
+  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
 
 ```{r}
 picks %>% filter(ArtikelNr == 26535,lot_size !=0  ) %>%
@@ -310,6 +294,29 @@ weekly_avg_picks %>%
 ```
 
 # Zeitreihenanalyse
+## Baseline-Modell (Durchschnitt)
+```{r}
+materials_b <- materials_b %>% group_by(ArtikelNr) %>% mutate(Baseline = mean(Menge))
+
+evaluation = data.frame(Model = "Baseline",
+                        MFE = numeric(1),
+                        MAE = numeric(1),
+                        MSE = numeric(1),
+                        sMAPE = numeric(1))
+# MFE berechnen
+evaluation[evaluation$Model == "Baseline",] $MFE = mean(materials_b$Menge - materials_b$Baseline)
+
+evaluation[evaluation$Model == "Baseline",] $MAE = mean(abs(materials_b$Menge - materials_b$Baseline))
+
+
+evaluation[evaluation$Model == "Baseline",] $MSE = mean((materials_b$Menge - materials_b$Baseline)^2)
+
+
+evaluation[evaluation$Model == "Baseline",] $sMAPE = smape(materials_b$Menge, materials_b$Baseline)
+
+evaluation
+```
+
 ## Gesamtmodell
 ```{r}
 materials_B_aus <- materials_b %>%
