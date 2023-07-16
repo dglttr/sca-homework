@@ -309,4 +309,133 @@ weekly_avg_picks %>%
   geom_line(aes(x=week ,y=avgpicks_per_week, group= ArtikelNr, col= ArtikelNr))
 ```
 
+# Zeitreihenanalyse
+## Gesamtmodell
+```{r}
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
 
+mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
+ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
+plot.ts(ts_3d_Scheiben)
+
+# Create model
+m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
+m_3d_Scheiben
+
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
+
+# DataFrame für Originaldaten
+df_3d_Scheiben_orig = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$x), 1), 
+  bestand = as.numeric(fcast_3d_Scheiben$x), 
+  group = rep("Original", length(fcast_3d_Scheiben$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_3d_Scheiben_fcast = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean), 1), 
+  bestand = c(as.numeric(fcast_3d_Scheiben$fitted), as.numeric(fcast_3d_Scheiben$mean)), 
+  group = rep("Modell", length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean)))
+
+# In ein großes DataFrame zusammenführen
+df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
+
+# Plot
+ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") +
+  ylab("Menge") +
+  ggtitle("Gesamtmodell (Projekt + Großhandel)") +
+  theme(legend.title = element_blank())
+```
+
+## Projektbetrieb
+```{r}
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  ## CHANGE MADE HERE ##
+  filter(klasse == "Projekt") %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
+ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
+plot.ts(ts_3d_Scheiben)
+
+# Create model
+m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
+m_3d_Scheiben
+
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
+
+# DataFrame für Originaldaten
+df_3d_Scheiben_orig = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$x), 1), 
+  bestand = as.numeric(fcast_3d_Scheiben$x), 
+  group = rep("Original", length(fcast_3d_Scheiben$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_3d_Scheiben_fcast = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean), 1), 
+  bestand = c(as.numeric(fcast_3d_Scheiben$fitted), as.numeric(fcast_3d_Scheiben$mean)), 
+  group = rep("Modell", length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean)))
+
+# In ein großes DataFrame zusammenführen
+df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
+
+# Plot
+ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Menge") +
+  ggtitle("Projektbasiert") +
+  theme(legend.title = element_blank())
+```
+
+## Großhandel
+```{r}
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  ## CHANGE MADE HERE ##
+  filter(klasse == "Handel") %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+mengen_3d_scheiben <- materials_B_aus[materials_B_aus$`Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2", "menge_pro_monat"]
+ts_3d_Scheiben <- ts(mengen_3d_scheiben, frequency = 12)
+plot.ts(ts_3d_Scheiben)
+
+# Create model
+m_3d_Scheiben <- ets(ts_3d_Scheiben, model="ZZZ")
+m_3d_Scheiben
+
+fcast_3d_Scheiben = forecast(m_3d_Scheiben, 12)
+
+# DataFrame für Originaldaten
+df_3d_Scheiben_orig = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$x), 1), 
+  bestand = as.numeric(fcast_3d_Scheiben$x), 
+  group = rep("Original", length(fcast_3d_Scheiben$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_3d_Scheiben_fcast = data.frame(
+  period = seq(1, length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean), 1), 
+  bestand = c(as.numeric(fcast_3d_Scheiben$fitted), as.numeric(fcast_3d_Scheiben$mean)), 
+  group = rep("Modell", length(fcast_3d_Scheiben$fitted)+length(fcast_3d_Scheiben$mean)))
+
+# In ein großes DataFrame zusammenführen
+df_3d_Scheiben = rbind(df_3d_Scheiben_orig, df_3d_Scheiben_fcast)
+
+# Plot
+ggplot(df_3d_Scheiben, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") + 
+  ylab("Menge") +
+  ggtitle("Großhandel")  +
+  theme(legend.title = element_blank())
+```
