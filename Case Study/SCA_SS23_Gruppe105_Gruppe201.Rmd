@@ -40,6 +40,14 @@ materials$ORGAKzl <- as.factor(materials$ORGAKzl)
 materials$EinAusDat <- as.Date(materials$EinAusDat)
 materials$BstDat <- as.Date(materials$BstDat)
 
+# Klassifizierung der Transaktionen: Projekt, Handel, Einkauf - nach Keywords
+projekt <- c('PV-Realisierung', 'PV: Realisierung', 'PV: Tankstelle', 'PV: ET', 'PV: EDEKA', 'PV: MBG', 'PV: MO', 'PV: SolarSun', 'PV-Anlage: Realisierung', 'PV: 15,39', 'PV: 175x', 'PV: 99,83', 'PV: EFH')
+handel <- c('PV-Materialverkauf', 'Groß- und')
+einkauf <- c('Einkauf')
+
+materials <- materials %>%
+  mutate(klasse=if_else(grepl(paste(projekt, collapse='|'), PjInfo), "Projekt", if_else(grepl(paste(handel, collapse='|'), PjInfo), "Handel", if_else(grepl(paste(einkauf, collapse='|'), PjInfo), "Einkauf", "Anderes"))))
+
 # Nur relevante Materialien für Gruppe B
 materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
@@ -49,18 +57,38 @@ materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
 materials_b <- materials %>%  filter(`Artikel-Bezeichnung` %in% materials_group_b)
 
-# Klassifizierung der Transaktionen: Projekt, Handel, Einkauf - nach Keywords
-projekt <- c('PV-Realisierung', 'PV: Realisierung', 'PV: Tankstelle', 'PV: ET', 'PV: EDEKA', 'PV: MBG', 'PV: MO', 'PV: SolarSun', 'PV-Anlage: Realisierung', 'PV: 15,39', 'PV: 175x', 'PV: 99,83', 'PV: EFH')
-handel <- c('PV-Materialverkauf', 'Groß- und')
-einkauf <- c('Einkauf')
-
-materials_b <- materials_b %>%
-  mutate(klasse=if_else(grepl(paste(projekt, collapse='|'), PjInfo), "Projekt", if_else(grepl(paste(handel, collapse='|'), PjInfo), "Handel", if_else(grepl(paste(einkauf, collapse='|'), PjInfo), "Einkauf", "Anderes"))))
-
 materials_b
 ```
 
 # Explorative Datenanalyse
+## Deskriptive Statistiken
+```{r}
+# Anzahl Kunden
+materials %>% filter(EinAutDatTyp != "geliefertAm") %>% select(ORGAKzl) %>% distinct() %>% count()
+```
+
+```{r}
+# Anzahl Lieferanten
+materials %>% filter(EinAutDatTyp == "geliefertAm") %>% select(ORGAKzl) %>% distinct() %>% count()
+```
+
+```{r}
+# Anzahl Projekte
+materials %>% select(PjInfo) %>% distinct() %>% count()
+```
+## Plot: Verteilung Projektklassen
+```{r}
+transaktion_klassiert <- materials %>% group_by(klasse) %>% count()
+
+ggplot(transaktion_klassiert, aes(x=reorder(klasse, -n, sum), y=n, fill=klasse)) +
+  geom_col() +
+  theme(legend.position = "none") +
+  ylab("Anzahl Transaktionen") +
+  xlab("")
+
+```
+
+
 ## Plot: Bestand über Zeit
 ```{r}
 materials_b %>% 
@@ -220,7 +248,8 @@ picks %>% filter(lot_size != 0) %>%
   #geom_vline(data=picks %>% group_by(`Artikel-Bezeichnung`) %>% summarize(mean_lot_size=mean(lot_size, na.rm=TRUE)), aes(xintercept=mean_lot_size), color="red", linetype="dashed", size=0.75) +
   facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
   # Text linksbündig
-  theme(strip.text.x = element_text(hjust=0.0))
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("Verteilung der Bestell-Losgrößen nach Artikel")
 ```
 
 ```{r}
