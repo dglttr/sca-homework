@@ -436,9 +436,7 @@ materials_b_tägl_menge <- materials_b %>%
   summarize(tägl_menge=-sum(Menge))
 
 #hist(menge_3d_scheiben$tägl_menge, 100)
-materials_b_tägl_menge
-```
-```{r}
+
 materials_b_tägl_menge %>%
   group_by(`Artikel-Bezeichnung`) %>%
   summarize(percentile_90 = quantile(tägl_menge, probs=0.9),
@@ -446,4 +444,15 @@ materials_b_tägl_menge %>%
 
 ```
 
+```{r}
+# Menge aggregiert auf Monatsebene (lassen sich Trends erkennen?)
+materials_b_monatl_menge <- materials_b %>%
+  filter(Menge < 0 & `Artikel-Bezeichnung` == "3d-U-Scheiben     8,4   M 8         DIN 9021  A2") %>%
+  group_by(month=as.yearmon(EinAusDat)) %>%
+  summarize(monatl_menge=-sum(Menge))
+
+ggplot(data=materials_b_monatl_menge, aes(x=month, y=monatl_menge)) +
+  geom_line() +
+  geom_smooth(method=lm)
+```
 
