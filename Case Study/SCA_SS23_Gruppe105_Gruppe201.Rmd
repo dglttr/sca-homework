@@ -256,41 +256,41 @@ picks %>% filter(lot_size != 0) %>%
 picks %>% filter(ArtikelNr == 29523,lot_size !=0 ) %>% 
   ggplot(aes(x=lot_size)) +
   geom_histogram(binwidth=.1, colour="black", fill="white")+
-  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
 
 ```{r}
 picks %>% filter(ArtikelNr == 26535,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
 ```{r}
 picks %>% filter(ArtikelNr == 21866,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
 ```{r}
 picks %>% filter(ArtikelNr == 2628,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
 ```{r}
-picks %>% filter(ArtikelNr == 26384,lot_size !=0  ) %>%
+picks %>% filter(ArtikelNr == 26385,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
 ```{r}
-picks %>% filter(ArtikelNr == 6201,lot_size !=0  ) %>%
+picks %>% filter(ArtikelNr == 6203,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=mean(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
 ```{r}
-picks %>% filter(lot_size !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(avg_lot = mean(lot_size))
+picks %>% filter(lot_size !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_lot = median(lot_size))
 ```
 ```{r}
 # Berechnen des Durchschnitts nach Wochen
@@ -562,3 +562,60 @@ ggplot(data=materials_b_monatl_menge, aes(x=month, y=monatl_menge)) +
   ylab("Monatliche Nachfrage") +
   geom_smooth(method=lm)
 ```
+
+
+# Bestandsanalyse
+
+```{r}
+mat_verlauf <- materials_b %>%
+  filter(EinAutDatTyp == "geliefertAm" | EinAutDatTyp == "BereitDat" | EinAutDatTyp == "PjPhaseDat") %>%
+  group_by(`ArtikelNr`) %>%
+  mutate(cum_sum = cumsum(Menge))
+  
+mat_verlauf %>% 
+    ggplot() +
+      geom_line(aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
+      facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") +
+      xlab("Zeit") + 
+      ylab("Materialmenge") +
+      theme(legend.position = "none") +
+      ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
+```   
+```{r}
+b <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>% mutate(bestand_lagged = Menge + Bestand) %>% mutate(bestand_aprox = lag(bestand_lagged)) 
+b %>% summarise(falscher_lagerbestand_prozent = sum(bestand_lagged == bestand_aprox, na.rm = TRUE)/n())
+b %>% ggplot(aes(x =EinAusDat)) +
+  geom_line(aes(y=Bestand, color= "Bestand")) + geom_line(aes(y=bestand_aprox, color= "(Bestand + Menge) lagged")) +
+  facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") 
+```
+Wir können sehen dass an gewissen Punkten Lagerbestände falsch angegeben sind. Dies kann man dadurch belegen, dass bei Warenausgang oder Wareneingang, der Bestand in der nächste Transaktion dem vorherigen um die Veränderung entsprechen muss.
+
+
+```{r}
+ordered_quantity <- mat_verlauf %>% filter(EinAutDatTyp =='geliefertAm')
+ordered_quantity %>% select(ArtikelNr, BstDat,) %>% left_join(mat_verlauf %>% select(EinAusDat,EinAutDatTyp, `Artikel-Bezeichnung`,Menge, Bestand, cum_sum) %>% filter(Menge<0) , join_by(ArtikelNr, closest(BstDat >= EinAusDat))) %>% drop_na() %>% ggplot()+ geom_histogram(aes(x=cum_sum, fill ="Cumsum")) + geom_histogram(aes(x= Bestand, fill ="Bestand")) + facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") 
+```
+
+
+
+```{r}
+picks_between_order <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>% arrange(EinAusDat, .by_group = TRUE) %>%  fill(BstDat, .direction = "up",) %>%  filter(Menge<0) %>% group_by(`Artikel-Bezeichnung`, BstDat) %>% summarise(pick_quantity_between_orders = sum(abs(Menge)))
+
+ggplot() + geom_line(aes(x= BstDat, y = pick_quantity_between_orders ,color="Picks"), data=picks_between_order)  + geom_point(aes(x= BstDat, y = pick_quantity_between_orders,color="Picks"), data =picks_between_order ,) +
+  geom_line(aes(x= BstDat, y = Menge,color= "Bestellte_menge"), data=ordered_quantity) +
+  geom_point(aes(x= BstDat, y = Menge, ,color= "Bestellte_menge"), data=ordered_quantity) +
+  facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") 
+
+
+```
+Der Plot stellt die Summe der Picks bevor einer Bestellung in Vergleich zur bestellten Menge dar. Man sieht das die Summe der Picks vor der Bestellung oft weit über der bestellten Menge liegen, das lässt auf größere Infeziente Lagerhaltung schliesen.
+
+
+```{r}
+picks_cum_sum_between_order <- mat_verlauf %>% select(ArtikelNr,`Artikel-Bezeichnung`,EinAusDat, BstDat,Menge, ) %>% group_by(`Artikel-Bezeichnung`) %>% arrange(EinAusDat, .by_group = TRUE) %>%  fill(BstDat, .direction = "up",) %>%  filter(Menge<0) %>% group_by(`Artikel-Bezeichnung`, BstDat) %>% mutate(pick_cum_sum_between_orders = cumsum(abs(Menge)))
+
+
+ordered_quantity %>% select(ArtikelNr, BstDat, `Artikel-Bezeichnung`) %>% left_join(picks_cum_sum_between_order, join_by(ArtikelNr, closest(BstDat >= EinAusDat))) %>% ggplot()+ geom_histogram(aes(x=pick_cum_sum_between_orders, fill ="Cumsum_picks")) + facet_wrap(~`Artikel-Bezeichnung.x`, nrow=3, scales="free") 
+```
+
+Der Plot zeigt die Verteilung der cumulierten Summe der Picks dar am Bestelltag der nächsten Bestellung. Dadurch dass der Wert nicht eindeutig ist, schiließen wir das der Logistiker kein eindeutigen Bestellmenge* hat
