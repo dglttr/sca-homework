@@ -581,7 +581,6 @@ ggplot(data=materials_b_monatl_menge, aes(x=month, y=monatl_menge)) +
   geom_smooth(method=lm)
 ```
 
-<<<<<<< HEAD
 # Wiederbeschaffungszeit (WBZ)
 ```{r}
 WBZ_Daten <- materials_b %>% filter(EinAutDatTyp == "geliefertAm")
@@ -609,8 +608,6 @@ WBZ_Daten %>%
             sd = sd(WBZ))
 ```
 
-=======
-
 # Bestandsanalyse
 
 ```{r}
@@ -627,7 +624,8 @@ mat_verlauf %>%
       ylab("Materialmenge") +
       theme(legend.position = "none") +
       ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
-```   
+```
+
 ```{r}
 b <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>% mutate(bestand_lagged = Menge + Bestand) %>% mutate(bestand_aprox = lag(bestand_lagged)) 
 b %>% summarise(falscher_lagerbestand_prozent = sum(bestand_lagged == bestand_aprox, na.rm = TRUE)/n())
@@ -640,7 +638,12 @@ Wir können sehen dass an gewissen Punkten Lagerbestände falsch angegeben sind.
 
 ```{r}
 ordered_quantity <- mat_verlauf %>% filter(EinAutDatTyp =='geliefertAm')
-ordered_quantity %>% select(ArtikelNr, BstDat,) %>% left_join(mat_verlauf %>% select(EinAusDat,EinAutDatTyp, `Artikel-Bezeichnung`,Menge, Bestand, cum_sum) %>% filter(Menge<0) , join_by(ArtikelNr, closest(BstDat >= EinAusDat))) %>% drop_na() %>% ggplot()+ geom_histogram(aes(x=cum_sum, fill ="Cumsum")) + geom_histogram(aes(x= Bestand, fill ="Bestand")) + facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") 
+ordered_quantity %>%
+  select(ArtikelNr, BstDat,) %>% left_join(mat_verlauf %>%
+  select(EinAusDat,EinAutDatTyp, `Artikel-Bezeichnung`,Menge, Bestand, cum_sum) %>%
+  filter(Menge<0) , join_by(ArtikelNr, closest(BstDat >= EinAusDat))) %>%
+  drop_na() %>%
+  ggplot()+ geom_histogram(aes(x=cum_sum, fill ="Cumsum")) + geom_histogram(aes(x= Bestand, fill ="Bestand")) + facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free")
 ```
 
 
@@ -666,4 +669,54 @@ ordered_quantity %>% select(ArtikelNr, BstDat, `Artikel-Bezeichnung`) %>% left_j
 ```
 
 Der Plot zeigt die Verteilung der cumulierten Summe der Picks dar am Bestelltag der nächsten Bestellung. Dadurch dass der Wert nicht eindeutig ist, schiließen wir das der Logistiker kein eindeutigen Bestellmenge* hat
->>>>>>> origin/Cordelia_working_branch
+
+# Sicherheitsbestand
+```{r}
+# Parameter
+perzentil_meldebestand <- 0.95
+perzentil_nachfrage <- 0.5
+perzentil_wbz <- 0.5
+
+# Erstellung DataFrame
+# Meldebestand
+meldebestand <- mat_verlauf %>%
+  filter(EinAutDatTyp =='geliefertAm') %>%
+  select(ArtikelNr, BstDat,) %>%
+  left_join(
+    mat_verlauf %>%
+    select(EinAusDat,EinAutDatTyp, `Artikel-Bezeichnung`,Menge, Bestand, cum_sum) %>%
+    filter(Menge<0) , join_by(ArtikelNr, closest(BstDat >= EinAusDat))
+  ) %>%
+  drop_na() %>%
+  group_by(`Artikel-Bezeichnung`) %>%
+  summarize(Meldebestand_quantile = quantile(Bestand, probs=perzentil_meldebestand))
+
+# Tägliche Nachfrage
+tägl_nachfrage <- materials_b_tägl_menge %>% group_by(`Artikel-Bezeichnung`) %>% summarize(Nachfrage_quantile=quantile(tägl_menge, perzentil_nachfrage))
+
+# WBZ in Tagen
+wbz <- WBZ_Daten %>% group_by(`Artikel-Bezeichnung`) %>% summarize(WBZ_quantile=quantile(WBZ, perzentil_wbz))
+
+sicherheitsbestand <- data.frame(unique(materials_b$`Artikel-Bezeichnung`))
+colnames(sicherheitsbestand) <- c("Artikel-Bezeichnung")
+
+sicherheitsbestand <- inner_join(sicherheitsbestand, meldebestand, by="Artikel-Bezeichnung")
+sicherheitsbestand <- inner_join(sicherheitsbestand, tägl_nachfrage, by="Artikel-Bezeichnung")
+sicherheitsbestand <- inner_join(sicherheitsbestand, wbz, by="Artikel-Bezeichnung")
+
+# Sicherheitsbestand berechnen
+sicherheitsbestand <- sicherheitsbestand %>%
+  mutate(sicherheitsbestand = as.numeric(Meldebestand_quantile - Nachfrage_quantile * WBZ_quantile))
+
+sicherheitsbestand
+```
+
+
+```{r}
+sicherheitsbestand$meldebestand <- meldebestand$meldebst
+sicherheitsbestand$nachfrage <- tägl_nachfrage$Nachfrage_quantile
+sicherheitsbestand$WBZ <- wbz$WBZ_quantile
+
+
+```
+
