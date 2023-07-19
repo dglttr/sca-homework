@@ -222,6 +222,19 @@ ggplot(data=materials_solarmodule, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)
     ggtitle("Verläufe Solarmodulbestand")
 ```
 
+## Lieferanten
+```{r}
+lieferanten <- materials %>%
+  filter(EinAutDatTyp == "geliefertAm") %>%
+  group_by(Lieferant=ORGAKzl) %>%
+  summarize(Anzahl_Bestellungen = n(),
+            Anzahl_untersch_Materialien = n_distinct(`Artikel-Bezeichnung`),
+            Lieferdauer = mean(EinAusDat - BstDat)) %>%
+  arrange(desc(Anzahl_Bestellungen))
+
+lieferanten
+```
+
 
 # Picks und Losgrößen
 ```{r}
@@ -673,9 +686,9 @@ Der Plot zeigt die Verteilung der cumulierten Summe der Picks dar am Bestelltag 
 # Sicherheitsbestand
 ```{r}
 # Parameter
-perzentil_meldebestand <- 0.95
-perzentil_nachfrage <- 0.5
-perzentil_wbz <- 0.5
+perzentil_meldebestand <- 0.5
+perzentil_nachfrage <- 0.9
+perzentil_wbz <- 0.9
 
 # Erstellung DataFrame
 # Meldebestand
@@ -710,13 +723,3 @@ sicherheitsbestand <- sicherheitsbestand %>%
 
 sicherheitsbestand
 ```
-
-
-```{r}
-sicherheitsbestand$meldebestand <- meldebestand$meldebst
-sicherheitsbestand$nachfrage <- tägl_nachfrage$Nachfrage_quantile
-sicherheitsbestand$WBZ <- wbz$WBZ_quantile
-
-
-```
-
