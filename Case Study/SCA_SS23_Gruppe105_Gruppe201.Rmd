@@ -562,3 +562,30 @@ ggplot(data=materials_b_monatl_menge, aes(x=month, y=monatl_menge)) +
   ylab("Monatliche Nachfrage") +
   geom_smooth(method=lm)
 ```
+
+# Wiederbeschaffungszeit (WBZ)
+```{r}
+WBZ_Daten <- materials_b %>% filter(EinAutDatTyp == "geliefertAm")
+WBZ_Daten$WBZ <- WBZ_Daten$EinAusDat - WBZ_Daten$BstDat
+
+# Nur positive WBZ (negative basieren auf fehlerhaften Transaktionen)
+WBZ_Daten <- WBZ_Daten %>% filter(WBZ > 0)
+WBZ_Daten[,c("ArtikelNr", "Artikel-Bezeichnung", "BstDat", "EinAusDat", "WBZ")]
+
+# Histogramm
+WBZ_Daten %>%
+  ggplot( aes(x=WBZ)) + geom_histogram(color = "black", fill="white") +
+  facet_wrap(~`Artikel-Bezeichnung`, scales = "free") +
+  labs(x = "WBZ", y = "Anzahl") +
+  ggtitle("WBZ für Materialien Gruppe B") #+ 
+  geom_vline(aes(xintercept=mean(WBZ)),
+            color="blue", linetype="dashed", size=1)
+
+# Verteilungmasse
+WBZ_Daten %>% 
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  summarize(mean = mean(WBZ),
+            median = median(WBZ),
+            sd = sd(WBZ))
+```
+
