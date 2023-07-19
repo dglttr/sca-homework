@@ -205,6 +205,24 @@ monthly_mean %>%
                 ))
 ```
 
+## Solarmodule
+```{r}
+solarmodul_artikel <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP", "Panasonic VBHN300SJ46", "Q.PEAK DUO BLK-G9 340 Wp", "JAM54S30 - 410Wp/MR - Beistellung")
+materials_solarmodule <- materials %>%
+  filter(`Artikel-Bezeichnung` %in% solarmodul_artikel) %>%
+  group_by(`ArtikelNr`) %>%
+  mutate(cum_sum = cumsum(Menge))
+
+ggplot(data=materials_solarmodule, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=2, scales="free_y") +
+    geom_line() +
+    xlab("Zeit") + 
+    ylab("Materialmenge") +
+    theme(legend.position = "none") +
+    ggtitle("Verläufe Solarmodulbestand")
+```
+
+
 # Picks und Losgrößen
 ```{r}
 picks <- materials_b %>% mutate(picks = if_else(Menge < 0, abs(Menge), 0), lot_size = if_else(Menge >= 0, abs(Menge), 0))
@@ -574,7 +592,8 @@ WBZ_Daten[,c("ArtikelNr", "Artikel-Bezeichnung", "BstDat", "EinAusDat", "WBZ")]
 
 # Histogramm
 WBZ_Daten %>%
-  ggplot( aes(x=WBZ)) + geom_histogram(color = "black", fill="white") +
+  ggplot(aes(x=WBZ)) +
+  geom_histogram(color = "black", fill="white") +
   facet_wrap(~`Artikel-Bezeichnung`, scales = "free") +
   labs(x = "WBZ", y = "Anzahl") +
   ggtitle("WBZ für Materialien Gruppe B") #+ 
