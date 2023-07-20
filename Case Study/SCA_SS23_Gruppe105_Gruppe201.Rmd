@@ -23,6 +23,7 @@ library(ggplot2)
 library(Metrics)
 library(knitr)
 library(prophet)
+library(purrr)
 opts_chunk$set(tidy.opts=list(width.cutoff=60),tidy=TRUE, echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
@@ -805,9 +806,10 @@ meldebestand
 ```
 
 # Neuer Ansatz
+## Bestellpolitik
 ```{r}
 perzentil_nachfrage <- 0.5
-perzentil_wbz <- 0.9
+#perzentil_wbz <- 0.9
 
 # Nachfrage in minimaler WBZ
 # Tägliche Nachfrage
@@ -827,183 +829,7 @@ bestellpolitik <- bestellpolitik %>% mutate(Losgröße.Empfehlung = as.numeric(N
 bestellpolitik
 ```
 
-```{r}
-# Parameter berechnen
-library(purrr)
-
-artikel <- "Rahmenloser Bildhalter Antireflexglas 29,7 x 42"
-artikelNr <- first(materials_b[materials_b$`Artikel-Bezeichnung` == artikel, "ArtikelNr"])
-min_wbz <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "min_wbz"])
-losgröße <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "Losgröße.Empfehlung"])
-param_tägl_nachfrage <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "Nachfrage_quantil"])
-große_nachfrage_ausgleichen <- FALSE
-
-nachfrage <- materials_b %>% filter(Menge < 0, `Artikel-Bezeichnung`==artikel) %>% mutate(cum_sum = cumsum(Menge))
-
-#nachfrage %>% mutate(cumsum_conditional = accumulate(Menge, ~ifelse(.x + .y >= -(losgröße), .x + .y, .y))) %>% select(EinAusDat, Menge, Bestand, cum_sum, cumsum_conditional)
-
-#ggplot(aes(x=EinAusDat, y=cumsum_conditional))+geom_line()
-
-#intervall_bestelldatum <- seq(min(nachfrage$EinAusDat), max(nachfrage$EinAusDat), by=as.numeric(min_wbz))
-
-```
-
-## Modulo-Ansatz
-Idee: Wenn der Modulo der Cumsum über die Nachfrage = 0 ist, heißt das, dass wir ein Vielfaches der Losgröße vorliegen haben und damit eine Bestellung auslösen müssten.
-Problem: Wenn nicht in Mengen von 1 nachgefragt wird, gibt es ggf. keine Vielfachen der Losgröße, obwohl diese zwischendurch unterschritten wird. Ein Workaround über einen Loop funktioniert (noch) nicht.
-```{r}
-# Modulo == Meldebestand
-lieferdaten <- nachfrage[nachfrage$cum_sum %% losgröße == meldebestand, "EinAusDat"]
-
-if (große_nachfrage_ausgleichen) {
-  bestellgröße <- NA
-} else {
-  bestellgröße <- losgröße
-}
-
-anfang <- data.frame(ArtikelNr=artikelNr,
-                     `Artikel-Bezeichnung`=artikel,
-                     EinAusDat=min(nachfrage$EinAusDat),
-                     EinAusDatTyp="geliefertAm",
-                     BstDat=min(nachfrage$EinAusDat) - min_wbz,
-                     Menge=first(nachfrage$Bestand), # ggf. ändern
-                     Bestand=NA,
-                     PjNr=NA,
-                     PjInfo=NA,
-                     ORGAKzl="Anfangsbestand",
-                     klasse="Einkauf",
-                     cum_sum=NA)
-
-mengen <- data.frame(ArtikelNr=artikelNr,
-                     `Artikel-Bezeichnung`=artikel,
-                     EinAusDat=lieferdaten + min_wbz,
-                     EinAusDatTyp="geliefertAm",
-                     BstDat=lieferdaten,
-                     Menge=losgröße,
-                     Bestand=NA,
-                     PjNr=NA,
-                     PjInfo=NA,
-                     ORGAKzl="Neuer Einkauf",
-                     klasse="Einkauf",
-                     cum_sum=NA)
-
-colnames(anfang) <- colnames(nachfrage)
-colnames(mengen) <- colnames(nachfrage)
-ges <- rbind(anfang, mengen, nachfrage) %>%
-  arrange(EinAusDat) %>%
-  mutate(cum_sum = cumsum(Menge))
-
-# Ausreißer anpassen - funktioniert nicht
-if (große_nachfrage_ausgleichen) {
-  i = 1
-  while (nrow(neue_bestelldaten) != 0) {
-    neue_bestelldaten <- ges %>% group_by(EinAusDat) %>% summarize(end_val=min(cum_sum), diff_zu_meldebst=meldebestand-end_val) %>% filter(end_val<0)
-    
-    if (i > nrow(neue_bestelldaten)) {
-      break
-    }
-    
-    zusatzbestellungen <- data.frame(ArtikelNr=artikelNr,
-                       `Artikel-Bezeichnung`=artikel,
-                       EinAusDat=neue_bestelldaten$EinAusDat + min_wbz,
-                       EinAusDatTyp="geliefertAm",
-                       BstDat=neue_bestelldaten$EinAusDat,
-                       Menge=neue_bestelldaten$diff_zu_meldebst,
-                       Bestand=NA,
-                       PjNr=NA,
-                       PjInfo=NA,
-                       ORGAKzl="Ausgleichseinkauf",
-                       klasse="Einkauf",
-                       cum_sum=NA) %>%
-      # Only take one at a time, then recompute cumsum
-      nth(i)
-    
-    print(cat("\nNrow = ", nrow(neue_bestelldaten), "\n"))
-    print(neue_bestelldaten)
-    
-    colnames(zusatzbestellungen) <- colnames(nachfrage)
-    ges <- rbind(ges, zusatzbestellungen) %>%
-      arrange(EinAusDat) %>%
-      mutate(cum_sum = cumsum(Menge))
-    
-    i = i + 1
-  }
-}
-
-# Plotten
-ggplot(data=ges) +
-  geom_line(aes(x=EinAusDat,y=cum_sum))
-
-# Tatsächliche Anzahl Bestellungen
-# mittlerer Lagerbestand
-```
-
-## Conditional Cumsum
-Idee: Mit der accumulate()-Funktion prüfen, ob die nachgefragte Menge über der Losgröße liegt. Sobald sie darunter liegt, müssen wir am gleichen Tag eine Bestellung auslösen. Die Höhe der Bestellung entspricht der Losgröße plus dem Unterschied des Bestandes an dem Tag zur Losgröße.
-Hier müssen wir die Menge nach Tagen aggregieren.
-```{r}
-startbestand <- first(nachfrage$Bestand) + losgröße
-
-# Nach Tagen aggregieren
-a <- materials_b %>% filter(Menge < 0, `Artikel-Bezeichnung`==artikel) %>%
-  group_by(EinAusDat) %>% summarize(Menge=sum(Menge)) %>%
-  # Erste Zeile mit Startbestand addieren
-  mutate(Menge= ifelse(row_number() == 1, Menge+startbestand, Menge))
-
-# Brüche in Cumsum setzen
-a <- a %>%
-  mutate(cumsum_conditional = accumulate(Menge, ~ifelse(.x + .y > losgröße, .x + .y, 2*losgröße+(losgröße - abs(.x+.y))))) %>% select(EinAusDat, Menge, cumsum_conditional)
-
-#ggplot(aes(x=EinAusDat, y=cumsum_conditional))+geom_line()
-bestelldaten <- a %>% filter(cumsum_conditional > lag(cumsum_conditional)) %>% mutate(Bestellmenge=cumsum_conditional-losgröße)
-
-anfang <- data.frame(ArtikelNr=artikelNr,
-                     `Artikel-Bezeichnung`=artikel,
-                     EinAusDat=min(nachfrage$EinAusDat),
-                     EinAusDatTyp="geliefertAm",
-                     BstDat=min(nachfrage$EinAusDat) - min_wbz,
-                     Menge=losgröße, #first(nachfrage$Bestand), # ggf. ändern
-                     Bestand=NA,
-                     PjNr=NA,
-                     PjInfo=NA,
-                     ORGAKzl="Anfangsbestand",
-                     klasse="Einkauf",
-                     cum_sum=NA)
-
-mengen <- data.frame(ArtikelNr=artikelNr,
-                     `Artikel-Bezeichnung`=artikel,
-                     EinAusDat=bestelldaten$EinAusDat + min_wbz,
-                     EinAusDatTyp="geliefertAm",
-                     BstDat=bestelldaten$EinAusDat,
-                     Menge=bestelldaten$Bestellmenge,
-                     Bestand=NA,
-                     PjNr=NA,
-                     PjInfo=NA,
-                     ORGAKzl="Neuer Einkauf",
-                     klasse="Einkauf",
-                     cum_sum=NA)
-
-colnames(anfang) <- colnames(nachfrage)
-colnames(mengen) <- colnames(nachfrage)
-
-# Merge mit Nachfrage (nicht a, was durch Startbestand und Gruppierung abgeändert ist)
-ges <- rbind(anfang, mengen, nachfrage) %>%
-  arrange(EinAusDat) %>%
-  mutate(cum_sum = cumsum(Menge))
-
-ggplot(data=ges) +
-  geom_line(aes(x=EinAusDat,y=cum_sum))
-```
-```{r}
-c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
-                         "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
-                         "Kabelbinder 280x4,5 mm schwarz",
-                         "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
-                         "FINTECH Alu Steckrohr IESR 40 AL (3m)",
-                         "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
-```
-
-## For-Loop
+## Bestandverlauf mit neuer Bestellpolitik
 ```{r}
 alle_artikel <- data.frame()
 
