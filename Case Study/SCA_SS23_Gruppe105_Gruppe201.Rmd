@@ -994,3 +994,123 @@ ges <- rbind(anfang, mengen, nachfrage) %>%
 ggplot(data=ges) +
   geom_line(aes(x=EinAusDat,y=cum_sum))
 ```
+```{r}
+c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
+                         "Rahmenloser Bildhalter Antireflexglas 29,7 x 42",
+                         "Kabelbinder 280x4,5 mm schwarz",
+                         "FPKU-EM-F PVC- Rohr grau EN50 L=3m",
+                         "FINTECH Alu Steckrohr IESR 40 AL (3m)",
+                         "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
+```
+
+## For-Loop
+```{r}
+alle_artikel <- data.frame()
+
+for (mat in materials_group_b) {
+
+  # Start-Parameter
+  artikel <- mat
+  artikelNr <- first(materials_b[materials_b$`Artikel-Bezeichnung` == artikel, "ArtikelNr"])
+  
+  min_wbz <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "min_wbz"])
+  losgröße <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "Losgröße.Empfehlung"])
+  startbestand <- losgröße
+  
+  nachfrage <- materials_b %>%
+    filter(Menge < 0, `Artikel-Bezeichnung`==artikel, !is.na(EinAusDat)) %>%
+    mutate(cum_sum=cumsum(Menge))
+  
+  # LOOP
+  # Variablen für Loop
+  bestand <- startbestand
+  bestelldaten <- c()
+  bestellmengen <- c()
+  
+  for (i in 1:nrow(nachfrage)) {
+    row <- nth(nachfrage, i)
+    
+    bestand <- bestand + as.numeric(row$Menge)
+    
+    if (bestand <= losgröße) {
+      # Bestellung auslösen
+      bestelldaten <- append(bestelldaten, row$EinAusDat)
+      
+      # Bestellmenge = Losgröße plus was zusätzlich fehlt
+      bestellmenge <- losgröße + (losgröße-bestand)
+      bestellmengen <- append(bestellmengen, bestellmenge)
+      bestand <- bestand + bestellmenge
+    }
+  }
+  
+  # Erste Zeile - Anfangswert
+  anfang <- data.frame(ArtikelNr=artikelNr,
+                       `Artikel-Bezeichnung`=artikel,
+                       EinAusDat=min(nachfrage$EinAusDat, na.rm=TRUE),
+                       EinAusDatTyp="geliefertAm",
+                       BstDat=min(nachfrage$EinAusDat, na.rm=TRUE) - min_wbz,
+                       Menge=startbestand,
+                       Bestand=NA,
+                       PjNr=NA,
+                       PjInfo=NA,
+                       ORGAKzl="Anfangsbestand",
+                       klasse="Einkauf",
+                       cum_sum=NA)
+  
+  # DataFrame mit allen Bestellungen
+  mengen <- data.frame(ArtikelNr=artikelNr,
+                       `Artikel-Bezeichnung`=artikel,
+                       EinAusDat=bestelldaten + min_wbz,
+                       EinAusDatTyp="geliefertAm",
+                       BstDat=bestelldaten,
+                       Menge=bestellmengen,
+                       Bestand=NA,
+                       PjNr=NA,
+                       PjInfo=NA,
+                       ORGAKzl="Neuer Einkauf",
+                       klasse="Einkauf",
+                       cum_sum=NA)
+  
+  colnames(anfang) <- colnames(nachfrage)
+  colnames(mengen) <- colnames(nachfrage)
+  
+  # DataFrame zusammenführen, cum_sum (= Bestand) neu berechnen
+  ges <- rbind(anfang, mengen, nachfrage) %>%
+    arrange(EinAusDat) %>%
+    mutate(cum_sum = cumsum(Menge))
+  
+  # Statistiken
+  cat("\n\n", artikel)
+  cat("\n----------------------------------")
+  cat("\nLosgröße (= Meldebestand) = ", losgröße)
+  cat("\nMinimale Wiederbeschaffungszeit = ", min_wbz)
+  cat("\nAnzahl Bestellungen = ", nrow(mengen))
+  cat("\nBestellungen MBG = ", nrow(materials_b %>% filter(Menge > 0, `Artikel-Bezeichnung`==artikel)))
+  
+  # DataFrame mit MBG Performance zusammenführen
+  vergleich <- rbind(ges %>% mutate(Bestellpolitik="Empfehlung"),
+                     materials_b %>% filter(`Artikel-Bezeichnung`==artikel) %>% mutate(cum_sum=cumsum(Menge), Bestellpolitik="MBG"))
+  
+  # DataFrame mit Gesamt-DF zusammenführen
+  alle_artikel <- rbind(alle_artikel, vergleich %>% mutate(Artikel=artikel))
+  
+  # Individuelle Ergebnisse plotten
+  #ggplot(data=vergleich) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+ggtitle(artikel)
+  
+}
+
+# Gesamtplot
+ggplot(data=alle_artikel) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+facet_wrap(~Artikel, nrow=3, scale="free_y")+ylab("Bestand")
+```
+## Quantifizierung der Einsparungen
+```{r}
+kosten <- data.frame(Artikel=materials_group_b,
+                     Stückpreis=c(170, 36.58, 2.85, 9.39, 11.77, 28.1/500))
+
+alle_artikel %>% group_by(Artikel, Bestellpolitik) %>% summarize(gesamtbestand=sum(cum_sum)) %>% pivot_wider(names_from=Bestellpolitik, values_from=gesamtbestand) %>%
+  mutate(Unterschied=MBG-Empfehlung) %>%
+  inner_join(kosten, by="Artikel") %>%
+  mutate(Einsparungen=Unterschied*Stückpreis)
+```
+
+
