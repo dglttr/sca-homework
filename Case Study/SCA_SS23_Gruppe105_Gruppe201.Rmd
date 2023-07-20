@@ -93,8 +93,10 @@ ggplot(transaktion_klassiert, aes(x=reorder(klasse, -n, sum), y=n, fill=klasse))
 ```{r}
 materials_b %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=Bestand,group=ArtikelNr, color=ArtikelNr
-                ))
+  geom_line(aes(x=EinAusDat,y=Bestand,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
+                ))+
+  xlab('Datum')+
+  ggtitle('Lagerbestand über die Zeit')
 
 ```
 
@@ -102,8 +104,12 @@ materials_b %>%
 ```{r}
 materials_b %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=Menge,group=ArtikelNr, color=ArtikelNr
-                ))
+  geom_line(aes(x=EinAusDat,y=Menge,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
+                ))+
+  xlab('Datum')+
+  ggtitle('Menge über die Zeit')+
+  theme(legend.title = element_text(size = 5), 
+               legend.text = element_text(size = 5))
 ```
 
 ## Häufigkeit Materialien
@@ -174,7 +180,7 @@ materials_b
 ```{r}
 materials_b %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=Menge_diff,group=ArtikelNr, color=ArtikelNr
+  geom_line(aes(x=EinAusDat,y=Menge_diff,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
                 ))
 ```
 ## Durchschnitte der Menge (Nachfrage und Lieferungen gemeinsam)
@@ -183,25 +189,25 @@ materials_b %>%
 # Berechnen des Durchschnitts nach Wochen
 
 weekly_Menge <- materials_b %>%
-  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  group_by(`Artikel-Bezeichnung`, week = floor_date(EinAusDat, 'week')) %>%
   summarise(Menge_per_week= sum(Menge)) 
 
 # Plot nach Wochen
 weekly_Menge %>% 
   ggplot() +
-  geom_line(aes(x=week,y=Menge_per_week, group=ArtikelNr, color=ArtikelNr
+  geom_line(aes(x=week,y=Menge_per_week, group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
                 ))
 ```
 
 ### Plot: Monatsdurchschnitt der Menge
 ```{r}
 # Berechnen des Durchschnitts nach Monaten
-monthly_mean <- weekly_Menge %>%  group_by(ArtikelNr, month=month(week)) %>%
+monthly_mean <- weekly_Menge %>%  group_by(`Artikel-Bezeichnung`, month=month(week)) %>%
   mutate(mean_Menge= mean(Menge_per_week))
 
 monthly_mean %>% 
   ggplot() +
-  geom_line(aes(x=month,y=mean_Menge, group=ArtikelNr, color=ArtikelNr
+  geom_line(aes(x=month,y=mean_Menge, group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
                 ))
 ```
 
@@ -214,16 +220,27 @@ picks <- materials_b %>% mutate(picks = if_else(Menge < 0, abs(Menge), 0), lot_s
 ```{r}
 picks %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=picks, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y')) +
-  ylab("Gepickte Menge")
+  geom_line(aes(x=EinAusDat,y=picks, color=ArtikelNr)) +
+  ylab("Gepickte Menge")+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("") +
+  theme(legend.position = "none")
 ```
 
 ## Plot: Gelieferte Menge/Losgröße (Lieferungen)
 ```{r}
 picks %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=lot_size, group='Artikel-Bezeichnung', color=ArtikelNr, scale = 'free_y')) +
-  ylab("Gelieferte Menge")
+  geom_line(aes(x = EinAusDat, y = lot_size, color = `Artikel-Bezeichnung`))+
+  ylab("Gelieferte Menge")+
+  xlab('Datum')+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("") +
+  theme(legend.position = "none")
 ```
 
 ## Pickgröße vs. Bestell-Losgröße
@@ -242,10 +259,10 @@ picks %>% filter(ArtikelNr == 26535, ) %>%
 
 ## Picks vs. Losgröße nach Artikel
 ```{r}
-picks %>% filter(lot_size != 0) %>%
+picks %>% filter(lot_size != 0) %>% group_by(`Artikel-Bezeichnung`) %>% mutate(med_lot = median(lot_size)) %>% 
   ggplot(aes(x=lot_size)) +
   geom_histogram(colour="black", fill="white")+
-  #geom_vline(data=picks %>% group_by(`Artikel-Bezeichnung`) %>% summarize(mean_lot_size=mean(lot_size, na.rm=TRUE)), aes(xintercept=mean_lot_size), color="red", linetype="dashed", size=0.75) +
+  geom_vline(aes(xintercept=med_lot), color="red", linetype="dashed", size=0.75)+
   facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
   # Text linksbündig
   theme(strip.text.x = element_text(hjust=0.0)) +
@@ -289,17 +306,36 @@ picks %>% filter(ArtikelNr == 6203,lot_size !=0  ) %>%
   geom_histogram(binwidth=1,colour="black", fill="white") +
   geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
+# Median der Bestell-Losgrößen nach Artikel
 ```{r}
 picks %>% filter(lot_size !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_lot = median(lot_size))
 ```
+# Verteilung der Picks nach Artikel
 ```{r}
-# Berechnen des Durchschnitts nach Wochen
+picks %>% filter(picks !=0) %>% group_by(`Artikel-Bezeichnung`)%>% mutate(med_pick = median(picks)) %>% 
+  ggplot(aes(x=picks))+ 
+  geom_histogram(colour="black", fill="white")+
+  geom_vline(aes(xintercept=med_pick), color="red", linetype="dashed", size=0.75)+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("Verteilung der Picks nach Artikel")
+  
+```
+# Median und Durchschnitt der Picks nach Artikel
+```{r}
+picks %>% filter(picks !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_pick = median(picks), avg_picks= mean(picks))
+```
+
+```{r}
+# Berechnen der kumulierten Nachfrage nach Wochen
 weekly_picks <- picks %>%
   group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
   summarise(picks_per_week= sum(picks)) 
 ```
 
 ```{r}
+# Berechnen der Durchschnittsnachfrage nach Wochen
 weekly_avg_picks <- picks %>%
   group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
   summarise(avgpicks_per_week= mean(picks)) 
@@ -307,6 +343,7 @@ weekly_avg_picks <- picks %>%
 
 
 ```{r}
+# Berechnen der Bestell-Losgröße nach Wochen
 weekly_meanpick <- weekly_picks %>%  group_by(ArtikelNr) %>%
   mutate(mean_pick = mean(picks_per_week))
 ```
@@ -317,6 +354,7 @@ weekly_picks %>%
   geom_line(aes(x=week ,y=picks_per_week, group= ArtikelNr, col= ArtikelNr))
 ```
 ```{r}
+# Berechnen der Durchschnittlichen Bestell-Losgröße nach Wochen
 weekly_avg_picks %>% 
   ggplot() +
   geom_line(aes(x=week ,y=avgpicks_per_week, group= ArtikelNr, col= ArtikelNr))
@@ -582,10 +620,11 @@ mat_verlauf %>%
       ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
 ```   
 ```{r}
-b <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>% mutate(bestand_lagged = Menge + Bestand) %>% mutate(bestand_aprox = lag(bestand_lagged)) 
-b %>% summarise(falscher_lagerbestand_prozent = sum(bestand_lagged == bestand_aprox, na.rm = TRUE)/n())
+b <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>%  filter(klasse=='Handel') %>% mutate(bestand_lagged = Menge + Bestand ) %>% mutate(bestand_aprox = lag(bestand_lagged)) 
+b %>% summarise(falscher_lagerbestand_prozent = sum(bestand_lagged == bestand_aprox, na.rm = TRUE)/n(), falscher_lagerbestand_prozent_cum_sum = sum(cum_sum == bestand_aprox, na.rm = TRUE)/n())
 b %>% ggplot(aes(x =EinAusDat)) +
   geom_line(aes(y=Bestand, color= "Bestand")) + geom_line(aes(y=bestand_aprox, color= "(Bestand + Menge) lagged")) +
+  geom_line(aes(y=cum_sum, color= "cum_sum"))+
   facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") 
 ```
 Wir können sehen dass an gewissen Punkten Lagerbestände falsch angegeben sind. Dies kann man dadurch belegen, dass bei Warenausgang oder Wareneingang, der Bestand in der nächste Transaktion dem vorherigen um die Veränderung entsprechen muss.
@@ -601,7 +640,7 @@ ordered_quantity %>% select(ArtikelNr, BstDat,) %>% left_join(mat_verlauf %>% se
 ```{r}
 picks_between_order <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>% arrange(EinAusDat, .by_group = TRUE) %>%  fill(BstDat, .direction = "up",) %>%  filter(Menge<0) %>% group_by(`Artikel-Bezeichnung`, BstDat) %>% summarise(pick_quantity_between_orders = sum(abs(Menge)))
 
-ggplot() + geom_line(aes(x= BstDat, y = pick_quantity_between_orders ,color="Picks"), data=picks_between_order)  + geom_point(aes(x= BstDat, y = pick_quantity_between_orders,color="Picks"), data =picks_between_order ,) +
+ggplot() + geom_line(aes(x= BstDat, y = pick_quantity_between_orders ,color="Picks"), data = picks_between_order)  + geom_point(aes(x= BstDat, y = pick_quantity_between_orders,color="Picks"), data = picks_between_order ,) +
   geom_line(aes(x= BstDat, y = Menge,color= "Bestellte_menge"), data=ordered_quantity) +
   geom_point(aes(x= BstDat, y = Menge, ,color= "Bestellte_menge"), data=ordered_quantity) +
   facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") 
@@ -618,4 +657,4 @@ picks_cum_sum_between_order <- mat_verlauf %>% select(ArtikelNr,`Artikel-Bezeich
 ordered_quantity %>% select(ArtikelNr, BstDat, `Artikel-Bezeichnung`) %>% left_join(picks_cum_sum_between_order, join_by(ArtikelNr, closest(BstDat >= EinAusDat))) %>% ggplot()+ geom_histogram(aes(x=pick_cum_sum_between_orders, fill ="Cumsum_picks")) + facet_wrap(~`Artikel-Bezeichnung.x`, nrow=3, scales="free") 
 ```
 
-Der Plot zeigt die Verteilung der cumulierten Summe der Picks dar am Bestelltag der nächsten Bestellung. Dadurch dass der Wert nicht eindeutig ist, schiließen wir das der Logistiker kein eindeutigen Bestellmenge* hat
+Der Plot zeigt die Verteilung der cumulierten Summe der Picks dar am Bestelltag der nächsten Bestellung. Dadurch dass der Wert nicht eindeutig ist, schiließen wir das der Logistiker kein eindeutigen Meldebestand hat
