@@ -859,6 +859,7 @@ meldebestand
 perzentil_nachfrage <- 0.5
 perzentil_wbz <- 0.0  # 0 = min(wbz)
 
+# Zukunftswerte filtern
 materials_b <- materials_b %>% filter(EinAusDat <= "2023-06-12")
 
 # Tägliche Nachfrage
@@ -965,6 +966,8 @@ for (mat in materials_group_b) {
   cat("\nAngenommene Wiederbeschaffungszeit = ", wbz_quantil)
   cat("\nAnzahl Bestellungen = ", nrow(mengen))
   cat("\nBestellungen MBG = ", nrow(materials_b %>% filter(Menge > 0, `Artikel-Bezeichnung`==artikel)))
+  cat("\nAnzahl Stock-outs = ", nrow(ges %>% filter(cum_sum < 0 & lag(cum_sum) >=0)))
+  cat("\nAnzahl Stock-outs MBG = ", nrow(materials_b %>% filter(Bestand < 0 & lag(Bestand) >=0)))
   
   # DataFrame mit MBG Performance zusammenführen
   vergleich <- rbind(ges %>% mutate(Bestellpolitik="Empfehlung"),
