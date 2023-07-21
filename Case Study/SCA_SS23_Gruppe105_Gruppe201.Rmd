@@ -979,10 +979,10 @@ ggplot(data=alle_artikel) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpo
 ## Quantifizierung der Einsparungen
 ```{r}
 kosten <- data.frame(Artikel=materials_group_b,
-                     Stückpreis=c(170, 36.58, 2.85, 9.39, 11.77, 28.1/500))
+                     Stückpreis=c(170, 36.58, 2.85*280/100, 9.39, 11.77, 28.1/500))
 
 alle_artikel %>% group_by(Artikel, Bestellpolitik) %>% summarize(gesamtbestand=sum(cum_sum)) %>% pivot_wider(names_from=Bestellpolitik, values_from=gesamtbestand) %>%
-  mutate(Unterschied=MBG-Empfehlung) %>%
+  mutate(Unterschied=MBG - Empfehlung) %>%
   inner_join(kosten, by="Artikel") %>%
   mutate(Einsparungen=Unterschied*Stückpreis)
 ```
