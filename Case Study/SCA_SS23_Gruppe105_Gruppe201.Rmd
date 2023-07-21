@@ -857,23 +857,28 @@ meldebestand
 ## Bestellpolitik
 ```{r}
 perzentil_nachfrage <- 0.5
-perzentil_wbz <- 0.0
+perzentil_wbz <- 0.0  # 0 = min(wbz)
 
-# Nachfrage in minimaler WBZ
+materials_b <- materials_b %>% filter(EinAusDat <= "2023-06-12")
+
 # Tägliche Nachfrage
-tägl_nachfrage <- materials_b_tägl_menge %>%
-  group_by(`Artikel-Bezeichnung`) %>%
+tägl_nachfrage <- materials_b %>%
+  filter(Menge < 0) %>% # nur Nachfrage-Transaktionen
+  group_by(EinAusDat, `Artikel-Bezeichnung`) %>% # Täglich und nach Artikel
+  summarize(tägl_menge=-sum(Menge)) %>%
+  group_by(`Artikel-Bezeichnung`) %>%  # für Artikel über gesamte Zeit aggregieren
   summarize(Nachfrage_quantil=quantile(tägl_menge, perzentil_nachfrage))
 
-# WBZ in Tagen
-wbz <- WBZ_Daten %>%
+# Wiederbeschaffungszeit
+wbz <- materials_b %>% filter(EinAutDatTyp == "geliefertAm") %>%
+  mutate(WBZ=EinAusDat - BstDat) %>%
+  filter(WBZ > 0) %>%  # Nur positive WBZ (negative basieren auf fehlerhaften Transaktionen)
   group_by(`Artikel-Bezeichnung`) %>%
-  summarize(WBZ_quantil=quantile(WBZ, perzentil_wbz),
-            min_wbz = min(WBZ))
+  summarize(WBZ_quantil=quantile(WBZ, perzentil_wbz))
 
 # Bestellpolitik: Optimale Losgröße als Nachfrage * minimale WBZ berechnen
 bestellpolitik <- inner_join(tägl_nachfrage, wbz, by="Artikel-Bezeichnung")
-bestellpolitik <- bestellpolitik %>% mutate(Losgröße.Empfehlung = as.numeric(Nachfrage_quantil*min_wbz)) 
+bestellpolitik <- bestellpolitik %>% mutate(Losgröße.Empfehlung = as.numeric(Nachfrage_quantil*WBZ_quantil)) 
 bestellpolitik
 ```
 
@@ -887,7 +892,7 @@ for (mat in materials_group_b) {
   artikel <- mat
   artikelNr <- first(materials_b[materials_b$`Artikel-Bezeichnung` == artikel, "ArtikelNr"])
   
-  min_wbz <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "min_wbz"])
+  wbz_quantil <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "WBZ_quantil"])
   losgröße <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "Losgröße.Empfehlung"])
   startbestand <- losgröße
   
@@ -895,7 +900,7 @@ for (mat in materials_group_b) {
     filter(Menge < 0, `Artikel-Bezeichnung`==artikel, !is.na(EinAusDat)) %>%
     mutate(cum_sum=cumsum(Menge))
   
-  # LOOP
+  # Bestellzeitpunkte und -mengen berechnen
   # Variablen für Loop
   bestand <- startbestand
   bestelldaten <- c()
@@ -922,7 +927,7 @@ for (mat in materials_group_b) {
                        `Artikel-Bezeichnung`=artikel,
                        EinAusDat=min(nachfrage$EinAusDat, na.rm=TRUE),
                        EinAusDatTyp="geliefertAm",
-                       BstDat=min(nachfrage$EinAusDat, na.rm=TRUE) - min_wbz,
+                       BstDat=min(nachfrage$EinAusDat, na.rm=TRUE) - wbz_quantil,
                        Menge=startbestand,
                        Bestand=NA,
                        PjNr=NA,
@@ -934,7 +939,7 @@ for (mat in materials_group_b) {
   # DataFrame mit allen Bestellungen
   mengen <- data.frame(ArtikelNr=artikelNr,
                        `Artikel-Bezeichnung`=artikel,
-                       EinAusDat=bestelldaten + min_wbz,
+                       EinAusDat=bestelldaten + wbz_quantil,
                        EinAusDatTyp="geliefertAm",
                        BstDat=bestelldaten,
                        Menge=bestellmengen,
@@ -957,13 +962,16 @@ for (mat in materials_group_b) {
   cat("\n\n", artikel)
   cat("\n----------------------------------")
   cat("\nLosgröße (= Meldebestand) = ", losgröße)
-  cat("\nMinimale Wiederbeschaffungszeit = ", min_wbz)
+  cat("\nAngenommene Wiederbeschaffungszeit = ", wbz_quantil)
   cat("\nAnzahl Bestellungen = ", nrow(mengen))
   cat("\nBestellungen MBG = ", nrow(materials_b %>% filter(Menge > 0, `Artikel-Bezeichnung`==artikel)))
   
   # DataFrame mit MBG Performance zusammenführen
   vergleich <- rbind(ges %>% mutate(Bestellpolitik="Empfehlung"),
-                     materials_b %>% filter(`Artikel-Bezeichnung`==artikel) %>% mutate(cum_sum=cumsum(Menge), Bestellpolitik="MBG"))
+                     materials_b %>% filter(`Artikel-Bezeichnung`==artikel) %>%
+                       mutate(cum_sum=Bestand, Bestellpolitik="MBG") # Bestand statt cumsum der Menge, um richtige Anfangswerte zu haben
+                       #mutate(cum_sum=cumsum(Menge), Bestellpolitik="MBG")
+                     )
   
   # DataFrame mit Gesamt-DF zusammenführen
   alle_artikel <- rbind(alle_artikel, vergleich %>% mutate(Artikel=artikel))
@@ -986,5 +994,4 @@ alle_artikel %>% group_by(Artikel, Bestellpolitik) %>% summarize(gesamtbestand=s
   inner_join(kosten, by="Artikel") %>%
   mutate(Einsparungen=Unterschied*Stückpreis)
 ```
-
 
