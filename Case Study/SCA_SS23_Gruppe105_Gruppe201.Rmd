@@ -161,6 +161,17 @@ plots <- materials_b %>% group_by(`Artikel-Bezeichnung`) %>% nest %>%
 
 print(plots$plot)
 ```
+
+## Plot: Mengen nach klasse
+```{r}
+materials_b %>% filter(Menge < 0) %>% group_by(`Artikel-Bezeichnung`, EinAusDat, klasse) %>% summarize(Nachfrage=sum(-Menge)) %>%
+  ggplot(aes(x=EinAusDat,y=Nachfrage,group=klasse, color=klasse)) +
+    geom_line() +
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0)) +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free_y')
+```
+
 ## Plot: Korrigierter Bestand (cumsum)
 ```{r}
 mat_verlauf <- materials_b %>%
@@ -645,7 +656,7 @@ ggplot(materials_b_n_bestellung, aes(x=bis_n_bestl)) +
 # Nachfrage (Lagerausgänge = negative Werte) pro Tag
 materials_b_tägl_menge <- materials_b %>%
   filter(Menge < 0) %>%
-  group_by(EinAusDat, `Artikel-Bezeichnung`) %>%
+  group_by(EinAusDat, `Artikel-Bezeichnung`, klasse) %>%
   summarize(tägl_menge=-sum(Menge))
 
 # 90% und 95% Perzentile
@@ -655,8 +666,8 @@ materials_b_tägl_menge %>%
             percentile_95 = quantile(tägl_menge, probs=0.95))
 
 # Histogramm
-ggplot(materials_b_tägl_menge, aes(x=tägl_menge)) +
-    geom_histogram(color="black", fill="white") +
+ggplot(materials_b_tägl_menge, aes(x=tägl_menge, group=klasse, fill=klasse)) +
+    geom_histogram() +
     facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
     # Text linksbündig
     theme(strip.text.x = element_text(hjust=0.0)) +
@@ -696,10 +707,8 @@ WBZ_Daten %>%
   ggplot(aes(x=WBZ)) +
   geom_histogram(color = "black", fill="white") +
   facet_wrap(~`Artikel-Bezeichnung`, scales = "free") +
-  labs(x = "WBZ", y = "Anzahl") +
-  ggtitle("WBZ für Materialien Gruppe B") #+ 
-  geom_vline(aes(xintercept=mean(WBZ)),
-            color="blue", linetype="dashed", size=1)
+  labs(x = "Wiederbeschaffungszeit", y = "Anzahl") +
+  geom_vline(data=WBZ_Daten %>% group_by(`Artikel-Bezeichnung`) %>% summarize(hist_mean=mean(WBZ)), aes(xintercept=hist_mean), color="blue", linetype="dashed", size=0.5)
 
 # Verteilungmasse
 WBZ_Daten %>% 
