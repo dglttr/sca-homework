@@ -77,6 +77,11 @@ materials %>% filter(EinAutDatTyp == "geliefertAm") %>% select(ORGAKzl) %>% dist
 # Anzahl Projekte
 materials %>% select(PjInfo) %>% distinct() %>% count()
 ```
+```{r}
+# Anzahl Materialien
+materials %>% select(`Artikel-Bezeichnung`) %>% distinct() %>% count()
+```
+
 ## Plot: Verteilung Projektklassen
 ```{r}
 transaktion_klassiert <- materials %>% group_by(klasse) %>% count()
@@ -405,6 +410,9 @@ materials_B_aus <- materials_b %>%
   group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
   summarize(menge_pro_monat= sum(-Menge))
 
+# Gesamt-DataFrame
+zeitreihen_alle_materialien <- data.frame()
+
 for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
   cat("\n\n-------------------------------------\nCurrent material: ", mat)
   mat_subset <- materials_B_aus %>% filter(`Artikel-Bezeichnung` == mat)
@@ -429,18 +437,30 @@ for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
     bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
     group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
   
-  # In ein großes DataFrame zusammenführen
+  # In ein DataFrame zusammenführen
   df = rbind(df_orig, df_fcast)
   
-  # Plot
-  print(ggplot(df, aes(x = period, y = bestand, colour = group)) +
+  # In Gesamt-DataFrame hinzufügen
+  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
+  
+  # Plot (print() hinzufügen, wenn jeder Plot einzeln ausgegeben werden soll)
+  ggplot(df, aes(x = period, y = bestand, colour = group)) +
     geom_line()+
     xlab("Periode") +
     ylab("Nachfrage") +
     ggtitle("Gesamtmodell (Projekt + Großhandel) für Artikel:", mat) +
-    theme(legend.title = element_blank())
+    theme(legend.title = element_blank()
   )
 } 
+
+# Für alle Materialien plotten
+ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    facet_wrap(~Artikel, nrow=3, scales="free_y")+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Gesamtmodell (Projekt + Großhandel)") +
+    theme(legend.title = element_blank())
 
 ```
 
@@ -455,6 +475,9 @@ materials_B_aus <- materials_b %>%
   filter(klasse == "Projekt") %>%
   group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
   summarize(menge_pro_monat= sum(-Menge))
+
+# Gesamt-DataFrame
+zeitreihen_alle_materialien <- data.frame()
 
 # Projektbetrieb
 for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
@@ -483,15 +506,26 @@ for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
   # In ein großes DataFrame zusammenführen
   df = rbind(df_orig, df_fcast)
   
+  # In Gesamt-DataFrame hinzufügen
+  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
+  
   # Plot
-  print(ggplot(df, aes(x = period, y = bestand, colour = group)) +
+  ggplot(df, aes(x = period, y = bestand, colour = group)) +
     geom_line()+
     xlab("Periode") +
     ylab("Nachfrage") +
     ggtitle("Modell auf Projektdaten für Artikel:", mat) +
     theme(legend.title = element_blank())
-  )
 } 
+
+# Für alle Materialien plotten
+ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    facet_wrap(~Artikel, nrow=3, scales="free_y")+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Modell für Projektbetrieb") +
+    theme(legend.title = element_blank())
 ```
 
 ## Großhandel
@@ -504,6 +538,9 @@ materials_B_aus <- materials_b %>%
   mutate(cum_sum_aus = -cumsum(Menge)) %>%
   group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
   summarize(menge_pro_monat= sum(-Menge))
+
+# Gesamt-DataFrame
+zeitreihen_alle_materialien <- data.frame()
 
 for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
   cat("\n\n-------------------------------------\nCurrent material: ", mat)
@@ -536,15 +573,26 @@ for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
   # In ein großes DataFrame zusammenführen
   df = rbind(df_orig, df_fcast)
   
+  # In Gesamt-DataFrame hinzufügen
+  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
+  
   # Plot
-  print(ggplot(df, aes(x = period, y = bestand, colour = group)) +
+  ggplot(df, aes(x = period, y = bestand, colour = group)) +
     geom_line()+
     xlab("Periode") +
     ylab("Nachfrage") +
     ggtitle("Modell auf Großhandelsdaten für Artikel:", mat) +
     theme(legend.title = element_blank())
-  )
 } 
+
+# Für alle Materialien plotten
+ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    facet_wrap(~Artikel, nrow=3, scales="free_y")+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Modell für Großhandel") +
+    theme(legend.title = element_blank())
 ```
 
 # Reichweite
@@ -809,7 +857,7 @@ meldebestand
 ## Bestellpolitik
 ```{r}
 perzentil_nachfrage <- 0.5
-#perzentil_wbz <- 0.9
+perzentil_wbz <- 0.0
 
 # Nachfrage in minimaler WBZ
 # Tägliche Nachfrage
