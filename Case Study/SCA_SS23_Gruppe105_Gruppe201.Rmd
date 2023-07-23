@@ -298,14 +298,16 @@ picks %>% filter(ArtikelNr == 26535, ) %>%
 ## Picks vs. Losgröße nach Artikel
 ```{r}
 picks %>% filter(lot_size != 0) %>%
-  ggplot(aes(x=lot_size, group=klasse, fill=klasse)) +
+  ggplot(aes(x=lot_size)) +
   geom_histogram()+
-  #geom_vline(data=picks %>% group_by(`Artikel-Bezeichnung`) %>% summarize(mean_lot_size=mean(lot_size, na.rm=TRUE)), aes(xintercept=mean_lot_size), color="red", linetype="dashed", size=0.75) +
+  geom_vline(data=picks %>% filter(lot_size != 0) %>% group_by(`Artikel-Bezeichnung`) %>% summarize(mean_lot_size=mean(lot_size, na.rm=TRUE)), aes(xintercept=mean_lot_size), color="blue", linetype="dashed", size=0.75) +
   facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
   # Text linksbündig
   theme(strip.text.x = element_text(hjust=0.0)) +
-  ggtitle("Verteilung der Bestell-Losgrößen nach Artikel")
+  ggtitle("Verteilung der Bestell-Losgrößen nach Artikel")+
+  labs(x="Losgröße", y="Anzahl Bestellungen")
 ```
+
 ```{r}
 # Pick-Losgrößen
 picks %>% filter(picks != 0) %>%
@@ -659,6 +661,13 @@ materials_b_tägl_menge <- materials_b %>%
   group_by(EinAusDat, `Artikel-Bezeichnung`, klasse) %>%
   summarize(tägl_menge=-sum(Menge))
 
+# Nachfrageverlauf über die Zeit
+materials_b_tägl_menge %>% ggplot() +
+  geom_point(aes(x=EinAusDat, y=tägl_menge, group=klasse, color=klasse), size=0.75) +
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free_y", nrow=3)+
+    theme(strip.text.x = element_text(hjust=0.0))+
+    labs(x="Zeit", y="Tägliche Nachfrage")
+
 # 90% und 95% Perzentile
 materials_b_tägl_menge %>%
   group_by(`Artikel-Bezeichnung`) %>%
@@ -865,7 +874,7 @@ meldebestand
 # Neuer Ansatz
 ## Bestellpolitik
 ```{r}
-perzentil_nachfrage <- 0.5
+perzentil_nachfrage <- 0.7
 perzentil_wbz <- 0.0  # 0 = min(wbz)
 
 # Zukunftswerte filtern
