@@ -48,6 +48,7 @@ einkauf <- c('Einkauf', 'Groß- und Einzelhandel der MBG')
 
 materials <- materials %>%
   mutate(klasse=if_else(grepl(paste(projekt, collapse='|'), PjInfo), "Projekt", if_else(grepl(paste(handel, collapse='|'), PjInfo), "Handel", if_else(grepl(paste(einkauf, collapse='|'), PjInfo), "Einkauf", "Anderes"))))
+materials$klasse <- as.factor(materials$klasse)
 
 # Nur relevante Materialien für Gruppe B
 materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
@@ -82,6 +83,33 @@ materials %>% select(PjInfo) %>% distinct() %>% count()
 materials %>% select(`Artikel-Bezeichnung`) %>% distinct() %>% count()
 ```
 
+## Plot: Transaktionen nach Zeit
+```{r}
+# Aggregiert auf Monate
+materials %>% group_by(Month=as.yearmon(EinAusDat)) %>% summarize(cnt=n()) %>% mutate(future=ifelse(Month > as.yearmon("2023-06-12"), "Future", "Past")) %>%
+  ggplot(aes(x=Month, y=cnt, fill=future)) +
+  geom_col()+
+  labs(x="Zeit", y="Anzahl monatl. Transaktionen")+
+  scale_fill_manual(values=c("darkgrey", "black"))+
+  theme(legend.position="none")+
+  #geom_vline(aes(xintercept=as.yearmon("2023-06-12")), color="blue", linetype="dashed", size=0.75)
+  geom_smooth(data=materials %>% filter(EinAusDat <= "2023-06-12") %>% group_by(Month=as.yearmon(EinAusDat)) %>% summarize(cnt=n()) %>% mutate(future=ifelse(Month > as.yearmon("2023-06-12"), "Future", "Past")), method=lm, se=FALSE)+
+   ylim(0, NA)
+```
+
+```{r}
+# Aggregiert auf Tage
+materials %>% group_by(Day=EinAusDat) %>% summarize(cnt=n()) %>% mutate(future=ifelse(Day > "2023-06-12", "Future", "Past")) %>%
+  ggplot(aes(x=Day, y=cnt, fill=future)) +
+  geom_col()+
+  labs(x="Zeit", y="Anzahl täglicher Transaktionen")+
+  scale_fill_manual(values=c("darkgrey", "black"))+
+  theme(legend.position="none")+
+  #geom_vline(aes(xintercept=as.yearmon("2023-06-12")), color="blue", linetype="dashed", size=0.75)
+  geom_smooth(data=materials %>% filter(EinAusDat <= "2023-06-12") %>% group_by(Day=EinAusDat) %>% summarize(cnt=n()) %>% mutate(future=ifelse(Day > as.yearmon("2023-06-12"), "Future", "Past")), method=lm, se=FALSE)+
+   ylim(0, NA)
+```
+
 ## Plot: Verteilung Projektklassen
 ```{r}
 transaktion_klassiert <- materials %>% group_by(klasse) %>% count()
@@ -90,7 +118,11 @@ ggplot(transaktion_klassiert, aes(x=reorder(klasse, -n, sum), y=n, fill=klasse))
   geom_col() +
   theme(legend.position = "none") +
   ylab("Anzahl Transaktionen") +
-  xlab("")
+  xlab("")+
+  scale_fill_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))
 
 ```
 
@@ -121,12 +153,27 @@ materials_b %>%
 
 ## Häufigkeit Materialien
 ```{r}
-materials_b %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n))
+# Treemap
+materials_agg <- materials %>% group_by(`Artikel-Bezeichnung`) %>% count()
+
+treemap(materials_agg, index="Artikel-Bezeichnung", vSize="n")
+
+materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %>% mutate(`Artikel-Bezeichnung` = substring(`Artikel-Bezeichnung`, 0, 50)) %>%
+  ggplot(aes(area=n, fill=`Artikel-Bezeichnung`, label=`Artikel-Bezeichnung`)) +
+  geom_treemap(start="topleft")+
+  geom_treemap_text(place="topleft")+
+  theme(legend.position = "none")+
+  scale_fill_hue(h=c(200, 270))
+```
+
+```{r}
+# Kurve
+materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %>% mutate(`Artikel-Bezeichnung` = substring(`Artikel-Bezeichnung`, 0, 50)) %>% ggplot(aes(x=reorder(`Artikel-Bezeichnung`, -n), y=n))+geom_col()+labs(y="Anzahl Transaktionen")
 ```
 
 ## Häufigkeit EinAusDatTyp
 ```{r}
-materials_b %>% group_by(EinAutDatTyp) %>% count() %>% arrange(desc(n))
+materials %>% group_by(EinAutDatTyp) %>% count() %>% arrange(desc(n))
 ```
 
 ## Häufigkeiten EinAusDatTyp über alle Materialien
@@ -136,7 +183,15 @@ materials %>% group_by(EinAutDatTyp) %>% count() %>% arrange(desc(n))
 
 ## Häufigkeit Projekte
 ```{r}
-materials_b %>% group_by(PjInfo) %>% count() %>% arrange(desc(n))
+# Top 15 Projekte
+materials_b %>% group_by(PjInfo, klasse) %>% count() %>% arrange(desc(n)) %>% mutate(PjInfo=substring(PjInfo, 0, 40)) %>% head(15) %>% ggplot(aes(x=n, y=reorder(PjInfo, n), fill=klasse))+
+  geom_col()+
+  theme(legend.position="none", axis.ticks.y=element_blank())+
+  labs(x="Anzahl Transaktionen", y="Projekt-Info")+
+  scale_fill_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))
 ```
 
 ## Plot: Mengen nach EinAusDatTyp
@@ -162,7 +217,21 @@ plots <- materials_b %>% group_by(`Artikel-Bezeichnung`) %>% nest %>%
 print(plots$plot)
 ```
 
-## Plot: Mengen nach klasse
+## Plot: Nachfrage nach Geschäftsbereich
+```{r}
+materials %>% filter(Menge <0) %>% group_by(klasse) %>% summarize(Nachfrage=sum(-Menge)/10**6) %>%
+  ggplot(aes(x=reorder(klasse, -Nachfrage), y=Nachfrage, fill=klasse))+
+  geom_col()+
+  scale_fill_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))+
+  labs(x="Geschäftsbereich", y="Nachfrage") +
+  theme(legend.position = "none")
+```
+
+
+## Plot: Mengen nach klasse und Material
 ```{r}
 materials_b %>% filter(Menge < 0) %>% group_by(`Artikel-Bezeichnung`, EinAusDat, klasse) %>% summarize(Nachfrage=sum(-Menge)) %>%
   ggplot(aes(x=EinAusDat,y=Nachfrage,group=klasse, color=klasse)) +
@@ -244,6 +313,8 @@ ggplot(data=materials_solarmodule, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)
     ylab("Materialmenge") +
     theme(legend.position = "none") +
     ggtitle("Verläufe Solarmodulbestand")
+
+materials %>% group_by(mon=as.yearmon(EinAusDat)) %>% summarize(anz_mat=n_distinct(`Artikel-Bezeichnung`)) %>% ggplot(aes(x=mon, y=anz_mat))+geom_col()
 ```
 
 ## Lieferanten
@@ -257,6 +328,44 @@ lieferanten <- materials %>%
   arrange(desc(Anzahl_Bestellungen))
 
 lieferanten
+```
+
+```{r}
+# Treemap
+treemap(lieferanten, index="Lieferant", vSize="Anzahl_Bestellungen", vColor="Lieferdauer", type="value", palette="-RdYlGn", border.col="grey", border.lwds = 0.2)
+```
+
+
+## Kunden
+```{r}
+# Tabelle
+mymode <- function(x) {
+                t <- table(x)
+                names(t)[ which.max(t) ]
+          }
+
+kunden <- materials %>%
+  filter(Menge < 0) %>%
+  group_by(Kunde=ORGAKzl) %>%
+  summarize(Anzahl_Transaktionen = n(),
+            Anzahl_Projekte = n_distinct(PjNr),
+            Kunde_seit = min(EinAusDat, na.rm=TRUE),
+            Geschäftsbereich=mymode(klasse)) %>%
+  arrange(desc(Anzahl_Transaktionen))
+
+kunden
+```
+
+```{r}
+# Plot
+ggplot(kunden, aes(x=Anzahl_Transaktionen, y=Anzahl_Projekte, label=Kunde, color=Geschäftsbereich))+
+  geom_point()+
+  geom_text(hjust=0.5, vjust=1, nudge_y=-15, check_overlap=TRUE)+
+  labs(x="Anzahl Transaktionen", y="Anzahl Projekte")+
+  scale_color_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))
 ```
 
 
@@ -666,7 +775,11 @@ materials_b_tägl_menge %>% ggplot() +
   geom_point(aes(x=EinAusDat, y=tägl_menge, group=klasse, color=klasse), size=0.75) +
   facet_wrap(~`Artikel-Bezeichnung`, scales="free_y", nrow=3)+
     theme(strip.text.x = element_text(hjust=0.0))+
-    labs(x="Zeit", y="Tägliche Nachfrage")
+  scale_color_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))+
+  labs(x="", y="Tägliche Nachfrage", color="Geschäftsbereich")
 
 # 90% und 95% Perzentile
 materials_b_tägl_menge %>%
@@ -680,7 +793,12 @@ ggplot(materials_b_tägl_menge, aes(x=tägl_menge, group=klasse, fill=klasse)) +
     facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
     # Text linksbündig
     theme(strip.text.x = element_text(hjust=0.0)) +
-    ggtitle("Verteilung der täglichen Ausgangsmengen (Nachfrage)")
+    ggtitle("Verteilung der täglichen Ausgangsmengen (Nachfrage)")+
+  scale_fill_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))+
+  labs(y="", x="Tägliche Nachfrage", fill="Geschäftsbereich")
 ```
 
 ## Monatliche Nachfrage
@@ -714,10 +832,12 @@ WBZ_Daten[,c("ArtikelNr", "Artikel-Bezeichnung", "BstDat", "EinAusDat", "WBZ")]
 # Histogramm
 WBZ_Daten %>%
   ggplot(aes(x=WBZ)) +
-  geom_histogram(color = "black", fill="white") +
+  geom_histogram() +
   facet_wrap(~`Artikel-Bezeichnung`, scales = "free") +
   labs(x = "Wiederbeschaffungszeit", y = "Anzahl") +
-  geom_vline(data=WBZ_Daten %>% group_by(`Artikel-Bezeichnung`) %>% summarize(hist_mean=mean(WBZ)), aes(xintercept=hist_mean), color="blue", linetype="dashed", size=0.5)
+  geom_vline(data=WBZ_Daten %>% group_by(`Artikel-Bezeichnung`) %>% summarize(hist_mean=mean(WBZ)), aes(xintercept=hist_mean), color="blue", linetype="dashed", size=0.5)+
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0))
 
 # Verteilungmasse
 WBZ_Daten %>% 
@@ -725,6 +845,14 @@ WBZ_Daten %>%
   summarize(mean = mean(WBZ),
             median = median(WBZ),
             sd = sd(WBZ))
+
+# Im Zeitverlauf - täglich
+WBZ_Daten %>%
+  ggplot(aes(x=EinAusDat, y=WBZ))+
+  geom_point(size=0.75)+
+  facet_wrap(~`Artikel-Bezeichnung`, scales = "free_y")+
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0))
 ```
 
 # Bestandsanalyse
