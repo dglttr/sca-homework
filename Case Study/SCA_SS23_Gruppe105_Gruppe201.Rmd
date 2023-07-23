@@ -160,10 +160,13 @@ materials_b %>%
 ## Häufigkeit Materialien
 ```{r}
 # Treemap
-materials_agg <- materials %>% group_by(`Artikel-Bezeichnung`) %>% count()
+materials_agg <- materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(cnt=n(), gesamtnachfrage=sum(ifelse(Menge<0, -Menge, 0)))
 
-treemap(materials_agg, index="Artikel-Bezeichnung", vSize="n")
+treemap(materials_agg, index="Artikel-Bezeichnung", vSize="cnt", vColor="gesamtnachfrage", palette="Blues", type="value", border.lwds=0.2)
+```
 
+```{r}
+# Schlechtere Treemap
 materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %>% mutate(`Artikel-Bezeichnung` = substring(`Artikel-Bezeichnung`, 0, 50)) %>%
   ggplot(aes(area=n, fill=`Artikel-Bezeichnung`, label=`Artikel-Bezeichnung`)) +
   geom_treemap(start="topleft")+
@@ -174,8 +177,47 @@ materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %
 
 ```{r}
 # Kurve
-materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %>% mutate(`Artikel-Bezeichnung` = substring(`Artikel-Bezeichnung`, 0, 50)) %>% ggplot(aes(x=reorder(`Artikel-Bezeichnung`, -n), y=n))+geom_col()+labs(y="Anzahl Transaktionen")
+agg <- materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %>% mutate(`Artikel-Bezeichnung` = substring(`Artikel-Bezeichnung`, 0, 50))
+
+ggplot(agg, aes(x=reorder(`Artikel-Bezeichnung`, -n), y=n))+
+  geom_col(color="black")+
+  labs(y="Anzahl Transaktionen", x="Materialien")+
+  theme(axis.ticks.x=element_blank(), axis.text.x=element_blank(),
+        panel.grid.major.x=element_blank(), panel.grid.major.y=element_blank())
+
+agg %>% mutate(Gruppe=cut(n, breaks=c(0, 5, 10, 20, 50, 100, 200, 500, 1000, 2000))) %>% group_by(Gruppe) %>% count() %>%
+  ggplot(aes(x=Gruppe, y=n))+
+  geom_col()
+
+materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(n_trans=n()) %>% group_by(n_trans) %>% summarize(n_materialien_je_n_trans=n(), first_mat=first(`Artikel-Bezeichnung`)) %>%
+  arrange(desc(n_trans), n_materialien_je_n_trans) %>%
+  ggplot(aes(x=n_trans, y=n_materialien_je_n_trans, label=first_mat))+
+  geom_point()+
+  labs(x="Anzahl Transaktionen", y="Anzahl Materialien")
+  #geom_text(data=materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(n_trans=n()) %>% group_by(n_trans) %>% summarize(n_materialien_je_n_trans=n(), first_mat=first(`Artikel-Bezeichnung`)) %>% arrange(desc(n_trans), n_materialien_je_n_trans) %>% nth(1), check_overlap = TRUE)
 ```
+
+## Anzahl unterschiedlicher Materialien pro Monat
+```{r}
+materials %>% group_by(mon=as.yearmon(EinAusDat)) %>% summarize(anz_mat=n_distinct(`Artikel-Bezeichnung`)) %>%
+  mutate(future=ifelse(mon > as.yearmon("2023-06-12"), "Future", "Past")) %>%
+  ggplot(aes(x=mon, y=anz_mat, fill=future))+geom_col()+
+  scale_fill_manual(values=c("darkgrey", "black"))+
+  theme(legend.position="none")+
+  labs(x="", y="Anzahl unterschiedlicher Materialien (pro Monat)")
+
+summary(materials[, c("Menge", "Bestand")])
+
+materials %>% group_by(Menge) %>% count() %>%
+  ggplot(aes(x=Menge))+
+  geom_histogram()+
+  labs(y="Anzahl Transaktionen")
+
+materials %>% group_by(Bestand) %>% count() %>%
+  ggplot(aes(x=Bestand))+
+  geom_histogram()
+```
+
 
 ## Häufigkeit EinAusDatTyp
 ```{r}
@@ -307,18 +349,17 @@ monthly_mean %>%
 ## Solarmodule
 ```{r}
 solarmodul_artikel <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP", "Panasonic VBHN300SJ46", "Q.PEAK DUO BLK-G9 340 Wp", "JAM54S30 - 410Wp/MR - Beistellung")
-materials_solarmodule <- materials %>%
-  filter(`Artikel-Bezeichnung` %in% solarmodul_artikel) %>%
-  group_by(`ArtikelNr`) %>%
-  mutate(cum_sum = cumsum(Menge))
 
-ggplot(data=materials_solarmodule, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
+ggplot(data=materials %>% filter(`Artikel-Bezeichnung` %in% solarmodul_artikel),
+  aes(x=EinAusDat, y=Bestand, fill=`ArtikelNr`)) +
     facet_wrap(~`Artikel-Bezeichnung`, nrow=2, scales="free_y") +
     geom_line() +
     xlab("Zeit") + 
-    ylab("Materialmenge") +
+    ylab("Bestand") +
     theme(legend.position = "none") +
-    ggtitle("Verläufe Solarmodulbestand")
+    ggtitle("Verläufe Solarmodulbestand")+
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0))
 ```
 
 ## Lieferanten
