@@ -232,7 +232,7 @@ materials %>% filter(Menge <0) %>% group_by(klasse) %>% summarize(Nachfrage=sum(
                              "Projekt" = "#FF8000",
                              "Einkauf" = "#00FFFF", 
                              "Anderes" = "grey"))+
-  labs(x="Geschäftsbereich", y="Nachfrage") +
+  labs(x="", y="Nachfrage") +
   theme(legend.position = "none")
 ```
 
@@ -319,8 +319,6 @@ ggplot(data=materials_solarmodule, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)
     ylab("Materialmenge") +
     theme(legend.position = "none") +
     ggtitle("Verläufe Solarmodulbestand")
-
-materials %>% group_by(mon=as.yearmon(EinAusDat)) %>% summarize(anz_mat=n_distinct(`Artikel-Bezeichnung`)) %>% ggplot(aes(x=mon, y=anz_mat))+geom_col()
 ```
 
 ## Lieferanten
@@ -365,13 +363,15 @@ kunden
 ```{r}
 # Plot
 ggplot(kunden, aes(x=Anzahl_Transaktionen, y=Anzahl_Projekte, label=Kunde, color=Geschäftsbereich))+
-  geom_point()+
+  geom_point(show.legend = FALSE)+
   geom_text(hjust=0.5, vjust=1, nudge_y=-15, check_overlap=TRUE)+
   labs(x="Anzahl Transaktionen", y="Anzahl Projekte")+
   scale_color_manual(values=c("Handel" = "#2A2AD5",
                              "Projekt" = "#FF8000",
                              "Einkauf" = "#00FFFF", 
-                             "Anderes" = "grey"))
+                             "Anderes" = "grey"))+
+  geom_point(size = -1, aes(fill = Geschäftsbereich)) +
+  theme(legend.position=c(.13, .78))
 ```
 
 
@@ -810,7 +810,7 @@ materials_b_tägl_menge <- materials_b %>%
 
 # Nachfrageverlauf über die Zeit
 materials_b_tägl_menge %>% ggplot() +
-  geom_point(aes(x=EinAusDat, y=tägl_menge, group=klasse, color=klasse), size=0.75) +
+  geom_point(aes(x=EinAusDat, y=tägl_menge, group=klasse, color=klasse), size=0.75)+
   facet_wrap(~`Artikel-Bezeichnung`, scales="free_y", nrow=3)+
     theme(strip.text.x = element_text(hjust=0.0))+
   scale_color_manual(values=c("Handel" = "#2A2AD5",
@@ -1053,18 +1053,23 @@ tägl_nachfrage <- materials_b %>%
   group_by(EinAusDat, `Artikel-Bezeichnung`) %>% # Täglich und nach Artikel
   summarize(tägl_menge=-sum(Menge)) %>%
   group_by(`Artikel-Bezeichnung`) %>%  # für Artikel über gesamte Zeit aggregieren
-  summarize(Nachfrage_quantil=quantile(tägl_menge, perzentil_nachfrage))
+  summarize(Konservativ=quantile(tägl_menge, 0.9),
+            Ausgewogen=quantile(tägl_menge, 0.5),
+            Risikofreudig=quantile(tägl_menge, 0.5))
 
 # Wiederbeschaffungszeit
 wbz <- materials_b %>% filter(EinAutDatTyp == "geliefertAm") %>%
   mutate(WBZ=EinAusDat - BstDat) %>%
   filter(WBZ > 0) %>%  # Nur positive WBZ (negative basieren auf fehlerhaften Transaktionen)
   group_by(`Artikel-Bezeichnung`) %>%
-  summarize(WBZ_quantil=quantile(WBZ, perzentil_wbz))
+  summarize(Konservativ=quantile(WBZ, 0.9),
+            Ausgewogen=quantile(WBZ, 0.5),
+            Risikofreudig=quantile(WBZ, 0.0))
 
 # Bestellpolitik: Optimale Losgröße als Nachfrage * minimale WBZ berechnen
-bestellpolitik <- inner_join(tägl_nachfrage, wbz, by="Artikel-Bezeichnung")
-bestellpolitik <- bestellpolitik %>% mutate(Losgröße.Empfehlung = as.numeric(Nachfrage_quantil*WBZ_quantil)) 
+bestellpolitik <- inner_join(tägl_nachfrage, wbz, by="Artikel-Bezeichnung",
+                             suffix=c(".Nachfrage", ".WBZ"))
+#bestellpolitik <- bestellpolitik %>% mutate(Losgröße.Empfehlung = as.numeric(Nachfrage_quantil*WBZ_quantil)) 
 bestellpolitik
 ```
 
@@ -1072,14 +1077,19 @@ bestellpolitik
 ```{r}
 alle_artikel <- data.frame()
 
+for (politik in c("Konservativ", "Ausgewogen", "Risikofreudig")) {
 for (mat in materials_group_b) {
 
   # Start-Parameter
   artikel <- mat
   artikelNr <- first(materials_b[materials_b$`Artikel-Bezeichnung` == artikel, "ArtikelNr"])
   
-  wbz_quantil <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "WBZ_quantil"])
-  losgröße <- as.numeric(bestellpolitik[bestellpolitik$`Artikel-Bezeichnung`==artikel, "Losgröße.Empfehlung"])
+  # Quantile
+  spalte <- ifelse(politik=="Konservativ", "Konservativ", ifelse(politik=="Ausgewogen", "Ausgewogen", "Risikofreudig"))
+  
+  wbz_quantil <- as.numeric(wbz[wbz$`Artikel-Bezeichnung`==mat, spalte])
+  nachfrage_quantil <- as.numeric(tägl_nachfrage[tägl_nachfrage$`Artikel-Bezeichnung`==mat, spalte])
+  losgröße <- nachfrage_quantil * wbz_quantil
   startbestand <- losgröße
   
   nachfrage <- materials_b %>%
@@ -1142,7 +1152,9 @@ for (mat in materials_group_b) {
   # DataFrame zusammenführen, cum_sum (= Bestand) neu berechnen
   ges <- rbind(anfang, mengen, nachfrage) %>%
     arrange(EinAusDat) %>%
-    mutate(cum_sum = cumsum(Menge))
+    mutate(cum_sum = cumsum(Menge), Bestellpolitik=politik)
+  # DataFrame mit Gesamt-DF zusammenführen
+  alle_artikel <- rbind(alle_artikel, ges)
   
   # Statistiken
   cat("\n\n", artikel)
@@ -1154,24 +1166,24 @@ for (mat in materials_group_b) {
   cat("\nAnzahl Stock-outs = ", nrow(ges %>% filter(cum_sum < 0 & lag(cum_sum) >=0)))
   cat("\nAnzahl Stock-outs MBG = ", nrow(materials_b %>% filter(Bestand < 0 & lag(Bestand) >=0)))
   
-  # DataFrame mit MBG Performance zusammenführen
-  vergleich <- rbind(ges %>% mutate(Bestellpolitik="Empfehlung"),
-                     materials_b %>% filter(`Artikel-Bezeichnung`==artikel) %>%
-                       mutate(cum_sum=Bestand, Bestellpolitik="MBG") # Bestand statt cumsum der Menge, um richtige Anfangswerte zu haben
-                       #mutate(cum_sum=cumsum(Menge), Bestellpolitik="MBG")
-                     )
-  
-  # DataFrame mit Gesamt-DF zusammenführen
-  alle_artikel <- rbind(alle_artikel, vergleich %>% mutate(Artikel=artikel))
-  
   # Individuelle Ergebnisse plotten
   #ggplot(data=vergleich) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+ggtitle(artikel)
   
 }
+}
 
-# Gesamtplot
-ggplot(data=alle_artikel) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+facet_wrap(~Artikel, nrow=3, scale="free_y")+ylab("Bestand")
+# DataFrame mit MBG Performance zusammenführen
+alle_artikel <- rbind(alle_artikel, materials_b %>% mutate(cum_sum=Bestand, Bestellpolitik="MBG") # Bestand statt cumsum der Menge, um richtige Anfangswerte zu haben
+                     #mutate(cum_sum=cumsum(Menge), Bestellpolitik="MBG")
+                   )
 ```
+
+```{r}
+# Gesamtplot
+ggplot(data=alle_artikel) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scale="free_y")+ylab("Bestand")+
+  scale_color_manual(values=c("MBG"="#A4182D", "Konservativ"="#377eb8", "Ausgewogen"="#4daf4a", "Risikofreudig"="yellow"))
+```
+
 ## Quantifizierung der Einsparungen
 ```{r}
 kosten <- data.frame(Artikel=materials_group_b,
@@ -1183,4 +1195,7 @@ alle_artikel %>% group_by(Artikel, Bestellpolitik) %>% summarize(gesamtbestand=s
   mutate(Einsparungen=Unterschied*Stückpreis)
 ```
 
-
+```{r}
+politik <- "a"
+ifelse(politik=="Konservativ", "Konservativ", ifelse(politik=="Ausgewogen", "Ausgewogen", "Risikofreudig"))
+```
