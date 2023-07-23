@@ -177,6 +177,15 @@ materials_b %>% filter(Menge < 0) %>% group_by(`Artikel-Bezeichnung`, EinAusDat,
     theme(strip.text.x = element_text(hjust=0.0)) +
     facet_wrap(~`Artikel-Bezeichnung`, scales = 'free_y')
 ```
+## Fehleranalyse der Bestandszahlen 
+```{r}
+bestand <- materials_b %>% group_by(`Artikel-Bezeichnung`) %>% mutate(bestand_lagged = Menge + Bestand) %>% mutate(bestand_aprox = lag(bestand_lagged)) 
+bestand %>% summarise(falscher_lagerbestand_prozent = sum(bestand_lagged == bestand_aprox, na.rm = TRUE)/n())
+bestand %>% ggplot(aes(x =EinAusDat)) +
+  geom_line(aes(y=Bestand, color= "Bestand")) + geom_line(aes(y=bestand_aprox, color= "(Bestand + Menge) lagged")) +
+  facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free") 
+```
+Wir können sehen dass an gewissen Punkten Lagerbestände falsch angegeben sind. Dies kann man dadurch belegen, dass bei Warenausgang oder Wareneingang, der Bestand in der nächste Transaktion dem vorherigen um die Veränderung entsprechen muss.
 
 ## Plot: Korrigierter Bestand (cumsum)
 ```{r}
@@ -195,18 +204,6 @@ ggplot(data=mat_verlauf, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
     ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
 ```
 
-## Differenzen der Menge zwischen Transaktionen
-```{r}
-materials_b <- materials_b %>%  group_by(ArtikelNr) %>%  mutate(Menge_diff = Menge - lag(Menge)) 
-materials_b
-```
-
-```{r}
-materials_b %>% 
-  ggplot() +
-  geom_line(aes(x=EinAusDat,y=Menge_diff,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
-                ))
-```
 ## Durchschnitte der Menge (Nachfrage und Lieferungen gemeinsam)
 ### Plot: Wochendurchschnitt der Menge
 ```{r}
@@ -226,8 +223,8 @@ weekly_Menge %>%
 ### Plot: Monatsdurchschnitt der Menge
 ```{r}
 # Berechnen des Durchschnitts nach Monaten
-monthly_mean <- weekly_Menge %>%  group_by(`Artikel-Bezeichnung`, month=month(week)) %>%
-  mutate(mean_Menge= mean(Menge_per_week))
+
+monthly_mean <- weekly_Menge %>%  group_by(`Artikel-Bezeichnung`, month = floor_date(week, 'month')) %>% mutate(mean_Menge= mean(Menge_per_week))
 
 monthly_mean %>% 
   ggplot() +
