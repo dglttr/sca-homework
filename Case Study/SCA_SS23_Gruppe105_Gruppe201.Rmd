@@ -959,7 +959,28 @@ ggplot(data=alle_artikel %>% filter(`Artikel-Bezeichnung`==mat)) +
   scale_fill_manual(values=c("MBG"="#A4182D", "Konservativ"="#377eb8", "Ausgewogen"="#4daf4a", "Risikofreudig"="#ff7f00"))
 ```
 
-## Quantifizierung der Einsparungen
+# Phase 5: Ergebnisbewertung
+## Anzahl Bestellungen
+```{r}
+# Anmerkung: Von den Bestellungen der neuen Bestellpolitiken muss 1 abgezogen werden (Startwert)
+alle_artikel %>% filter(Menge > 0) %>%
+  group_by(`Artikel-Bezeichnung`, Bestellpolitik) %>% count() %>%
+  pivot_wider(names_from=Bestellpolitik, values_from=n)
+```
+
+## Durchschnittlicher Lagerbestand
+```{r}
+alle_artikel %>% group_by(`Artikel-Bezeichnung`, Bestellpolitik) %>% summarize(mean_bestand=mean(cum_sum)) %>% pivot_wider(names_from=Bestellpolitik, values_from=mean_bestand)
+```
+
+## Stock-outs
+```{r}
+alle_artikel %>% filter(cum_sum < 0 & lag(cum_sum) >=0) %>%
+  group_by(`Artikel-Bezeichnung`, Bestellpolitik) %>% count() %>%
+  pivot_wider(names_from=Bestellpolitik, values_from=n)
+```
+
+## Business Impact: Kapitalbindung
 ```{r}
 kosten <- data.frame(`Artikel-Bezeichnung`=materials_group_b,
                      Stückpreis=c(170, 36.58, 2.85*280/100, 9.39, 11.77, 28.1/500))
