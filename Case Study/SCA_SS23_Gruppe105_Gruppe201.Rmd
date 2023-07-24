@@ -9,7 +9,7 @@ header-includes:
   \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
 ---
 
-# Datenaufbereitung
+# Phase 2: Datenbeschaffung/Einlesen
 ```{r setup, include=FALSE}
 # Laden von Packages
 library(readxl)
@@ -43,7 +43,7 @@ materials$BstDat <- as.Date(materials$BstDat)
 
 # Klassifizierung der Transaktionen: Projekt, Handel, Einkauf - nach Keywords
 projekt <- c('PV-Realisierung', 'PV: Realisierung', 'PV: Tankstelle', 'PV: ET', 'PV: EDEKA', 'PV: MBG', 'PV: MO', 'PV: SolarSun', 'PV-Anlage: Realisierung', 'PV: 15,39', 'PV: 175x', 'PV: 99,83', 'PV: EFH')
-handel <- c('PV-Materialverkauf')
+handel <- c('PV-Materialverkauf', 'PV: Materialverkauf', 'PV Materialverkauf')
 einkauf <- c('Einkauf', 'Groß- und Einzelhandel der MBG')
 
 materials <- materials %>%
@@ -59,10 +59,10 @@ materials_group_b <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP",
                          "3d-U-Scheiben     8,4   M 8         DIN 9021  A2")
 materials_b <- materials %>%  filter(`Artikel-Bezeichnung` %in% materials_group_b)
 
-materials_b
+materials_b %>% filter(`Artikel-Bezeichnung`=="3d-U-Scheiben     8,4   M 8         DIN 9021  A2", EinAutDatTyp=="geliefertAm") %>% group_by(mon=as.yearmon(EinAusDat)) %>% count() %>% ggplot(aes(x=mon, y=n))+geom_col()
 ```
 
-# Explorative Datenanalyse
+# Phase 3: Explorative Datenanalyse
 ## Deskriptive Statistiken
 ```{r}
 # Anzahl Kunden
@@ -78,6 +78,7 @@ materials %>% filter(EinAutDatTyp == "geliefertAm") %>% select(ORGAKzl) %>% dist
 # Anzahl Projekte
 materials %>% select(PjInfo) %>% distinct() %>% count()
 ```
+
 ```{r}
 # Anzahl Materialien
 materials %>% select(`Artikel-Bezeichnung`) %>% distinct() %>% count()
@@ -93,7 +94,7 @@ materials %>% group_by(Month=as.yearmon(EinAusDat)) %>% summarize(cnt=n()) %>% m
   scale_fill_manual(values=c("darkgrey", "black"))+
   theme(legend.position="none")+
   #geom_vline(aes(xintercept=as.yearmon("2023-06-12")), color="blue", linetype="dashed", size=0.75)
-  geom_smooth(data=materials %>% filter(EinAusDat <= "2023-06-12") %>% group_by(Month=as.yearmon(EinAusDat)) %>% summarize(cnt=n()) %>% mutate(future=ifelse(Month > as.yearmon("2023-06-12"), "Future", "Past")), method=lm, se=FALSE)+
+  geom_smooth(data=materials %>% filter(EinAusDat <= "2023-06-12") %>% group_by(Month=as.yearmon(EinAusDat)) %>% summarize(cnt=n()) %>% mutate(future=ifelse(Month > as.yearmon("2023-06-12"), "Future", "Past")), method=lm, se=FALSE, color="#C50E1F", size=1.5)+
    ylim(0, NA)
 ```
 
@@ -114,7 +115,7 @@ materials %>% group_by(Day=EinAusDat) %>% summarize(cnt=n()) %>% mutate(future=i
 ```{r}
 transaktion_klassiert <- materials %>% group_by(klasse) %>% count()
 
-ggplot(transaktion_klassiert, aes(x=reorder(klasse, -n, sum), y=n, fill=klasse)) +
+ggplot(transaktion_klassiert, aes(y=reorder(klasse, n, sum), x=n, fill=klasse)) +
   geom_col() +
   theme(legend.position = "none") +
   ylab("Anzahl Transaktionen") +
@@ -123,25 +124,6 @@ ggplot(transaktion_klassiert, aes(x=reorder(klasse, -n, sum), y=n, fill=klasse))
                              "Projekt" = "#FF8000",
                              "Einkauf" = "#00FFFF", 
                              "Anderes" = "grey"))
-
-```
-
-
-## Plot: Bestand über Zeit
-```{r}
-materials_b %>% 
-  ggplot() +
-  geom_line(aes(x=EinAusDat,y=Bestand,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
-                ))+
-  xlab('Datum')+
-  ggtitle('Lagerbestand über die Zeit')
-
-ggplot(data=materials_b, aes(x=EinAusDat, y=Bestand)) +
-    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
-    geom_line() +
-    xlab("Zeit") + 
-    ylab("Bestand") +
-    theme(legend.position = "none")
 
 ```
 
@@ -157,7 +139,8 @@ materials_b %>%
                legend.text = element_text(size = 5))
 ```
 
-## Häufigkeit Materialien
+## Materialien
+### Häufigkeit Materialien
 ```{r}
 # Treemap
 materials_agg <- materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(cnt=n(), gesamtnachfrage=sum(ifelse(Menge<0, -Menge, 0)))
@@ -166,29 +149,22 @@ treemap(materials_agg, index="Artikel-Bezeichnung", vSize="cnt", vColor="gesamtn
 ```
 
 ```{r}
-# Schlechtere Treemap
-materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %>% mutate(`Artikel-Bezeichnung` = substring(`Artikel-Bezeichnung`, 0, 50)) %>%
-  ggplot(aes(area=n, fill=`Artikel-Bezeichnung`, label=`Artikel-Bezeichnung`)) +
-  geom_treemap(start="topleft")+
-  geom_treemap_text(place="topleft")+
-  theme(legend.position = "none")+
-  scale_fill_hue(h=c(200, 270))
-```
-
-```{r}
-# Kurve
+# Transaktionen nach Material
 agg <- materials %>% group_by(`Artikel-Bezeichnung`) %>% count() %>% arrange(desc(n)) %>% mutate(`Artikel-Bezeichnung` = substring(`Artikel-Bezeichnung`, 0, 50))
 
+# Plot 1: Materialien nach Anzahl Transaktionen
 ggplot(agg, aes(x=reorder(`Artikel-Bezeichnung`, -n), y=n))+
   geom_col(color="black")+
   labs(y="Anzahl Transaktionen", x="Materialien")+
   theme(axis.ticks.x=element_blank(), axis.text.x=element_blank(),
         panel.grid.major.x=element_blank(), panel.grid.major.y=element_blank())
 
+# Plot 2: In Buckets einsortieren
 agg %>% mutate(Gruppe=cut(n, breaks=c(0, 5, 10, 20, 50, 100, 200, 500, 1000, 2000))) %>% group_by(Gruppe) %>% count() %>%
   ggplot(aes(x=Gruppe, y=n))+
   geom_col()
 
+# Plot 3: Scatter Plot der Gruppen
 materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(n_trans=n()) %>% group_by(n_trans) %>% summarize(n_materialien_je_n_trans=n(), first_mat=first(`Artikel-Bezeichnung`)) %>%
   arrange(desc(n_trans), n_materialien_je_n_trans) %>%
   ggplot(aes(x=n_trans, y=n_materialien_je_n_trans, label=first_mat))+
@@ -197,7 +173,7 @@ materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(n_trans=n()) %>% gro
   #geom_text(data=materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(n_trans=n()) %>% group_by(n_trans) %>% summarize(n_materialien_je_n_trans=n(), first_mat=first(`Artikel-Bezeichnung`)) %>% arrange(desc(n_trans), n_materialien_je_n_trans) %>% nth(1), check_overlap = TRUE)
 ```
 
-## Anzahl unterschiedlicher Materialien pro Monat
+### Anzahl unterschiedlicher Materialien pro Monat
 ```{r}
 materials %>% group_by(mon=as.yearmon(EinAusDat)) %>% summarize(anz_mat=n_distinct(`Artikel-Bezeichnung`)) %>%
   mutate(future=ifelse(mon > as.yearmon("2023-06-12"), "Future", "Past")) %>%
@@ -218,31 +194,24 @@ materials %>% group_by(Bestand) %>% count() %>%
   geom_histogram()
 ```
 
-
-## Häufigkeit EinAusDatTyp
+## EinAutDatTyp
+### Häufigkeit EinAusDatTyp
 ```{r}
 materials %>% group_by(EinAutDatTyp) %>% count() %>% arrange(desc(n))
 ```
 
-## Häufigkeiten EinAusDatTyp über alle Materialien
+### Häufigkeiten EinAusDatTyp über alle Materialien
 ```{r}
 materials %>% group_by(EinAutDatTyp) %>% count() %>% arrange(desc(n))
 ```
 
-## Häufigkeit Projekte
+## Projekte
+### Häufigkeiten Projekte
 ```{r}
-# Top 15 Projekte
-materials_b %>% group_by(PjInfo, klasse) %>% count() %>% arrange(desc(n)) %>% mutate(PjInfo=substring(PjInfo, 0, 40)) %>% head(15) %>% ggplot(aes(x=n, y=reorder(PjInfo, n), fill=klasse))+
-  geom_col()+
-  theme(legend.position="none", axis.ticks.y=element_blank())+
-  labs(x="Anzahl Transaktionen", y="Projekt-Info")+
-  scale_fill_manual(values=c("Handel" = "#2A2AD5",
-                             "Projekt" = "#FF8000",
-                             "Einkauf" = "#00FFFF", 
-                             "Anderes" = "grey"))
+materials %>% group_by(PjInfo) %>% count() %>% arrange(desc(n))
 ```
 
-## Plot: Mengen nach EinAusDatTyp
+### Plot: Mengen nach EinAusDatTyp
 ```{r}
 materials_b %>% group_by(`Artikel-Bezeichnung`,EinAutDatTyp, month = lubridate::floor_date(EinAusDat, 'month')) %>%
   summarise(volume=sum(Menge)) %>%
@@ -265,21 +234,20 @@ plots <- materials_b %>% group_by(`Artikel-Bezeichnung`) %>% nest %>%
 print(plots$plot)
 ```
 
-## Plot: Nachfrage nach Geschäftsbereich
+### Plot: Top Projekte
 ```{r}
-materials %>% filter(Menge <0) %>% group_by(klasse) %>% summarize(Nachfrage=sum(-Menge)/10**6) %>%
-  ggplot(aes(x=reorder(klasse, -Nachfrage), y=Nachfrage, fill=klasse))+
+# Top 15 Projekte
+materials %>% group_by(PjInfo, klasse) %>% count() %>% arrange(desc(n)) %>% mutate(PjInfo=substring(PjInfo, 0, 40)) %>% head(15) %>% ggplot(aes(x=n, y=reorder(PjInfo, n)))+
   geom_col()+
+  theme(legend.position="none", axis.ticks.y=element_blank())+
+  labs(x="Anzahl Transaktionen", y="Projekt-Info")+
   scale_fill_manual(values=c("Handel" = "#2A2AD5",
                              "Projekt" = "#FF8000",
                              "Einkauf" = "#00FFFF", 
-                             "Anderes" = "grey"))+
-  labs(x="", y="Nachfrage") +
-  theme(legend.position = "none")
+                             "Anderes" = "grey"))
 ```
-
-
-## Plot: Mengen nach klasse und Material
+## Menge
+### Plot: Mengen nach klasse und Material
 ```{r}
 materials_b %>% filter(Menge < 0) %>% group_by(`Artikel-Bezeichnung`, EinAusDat, klasse) %>% summarize(Nachfrage=sum(-Menge)) %>%
   ggplot(aes(x=EinAusDat,y=Nachfrage,group=klasse, color=klasse)) +
@@ -289,7 +257,7 @@ materials_b %>% filter(Menge < 0) %>% group_by(`Artikel-Bezeichnung`, EinAusDat,
     facet_wrap(~`Artikel-Bezeichnung`, scales = 'free_y')
 ```
 
-## Plot: Korrigierter Bestand (cumsum)
+### Plot: Korrigierter Bestand (cumsum)
 ```{r}
 mat_verlauf <- materials_b %>%
   filter(EinAutDatTyp == "geliefertAm" | EinAutDatTyp == "BereitDat" | EinAutDatTyp == "PjPhaseDat") %>%
@@ -306,7 +274,7 @@ ggplot(data=mat_verlauf, aes(x=EinAusDat, y=cum_sum, fill=`ArtikelNr`)) +
     ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
 ```
 
-## Differenzen der Menge zwischen Transaktionen
+### Differenzen der Menge zwischen Transaktionen
 ```{r}
 materials_b <- materials_b %>%  group_by(ArtikelNr) %>%  mutate(Menge_diff = Menge - lag(Menge)) 
 materials_b
@@ -318,6 +286,7 @@ materials_b %>%
   geom_line(aes(x=EinAusDat,y=Menge_diff,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
                 ))
 ```
+
 ## Durchschnitte der Menge (Nachfrage und Lieferungen gemeinsam)
 ### Plot: Wochendurchschnitt der Menge
 ```{r}
@@ -346,7 +315,7 @@ monthly_mean %>%
                 ))
 ```
 
-## Solarmodule
+## Vergleich Solarmodule
 ```{r}
 solarmodul_artikel <- c("DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP", "Panasonic VBHN300SJ46", "Q.PEAK DUO BLK-G9 340 Wp", "JAM54S30 - 410Wp/MR - Beistellung")
 
@@ -370,9 +339,11 @@ lieferanten <- materials %>%
   summarize(Anzahl_Bestellungen = n(),
             Anzahl_untersch_Materialien = n_distinct(`Artikel-Bezeichnung`),
             Lieferdauer = mean(EinAusDat - BstDat)) %>%
+  mutate(Anteil_Bestellungen = Anzahl_Bestellungen/sum(Anzahl_Bestellungen)) %>%
   arrange(desc(Anzahl_Bestellungen))
 
-lieferanten
+
+lieferanten %>% 
 ```
 
 ```{r}
@@ -398,7 +369,8 @@ kunden <- materials %>%
             Geschäftsbereich=mymode(klasse)) %>%
   arrange(desc(Anzahl_Transaktionen))
 
-kunden
+kunden %>% mutate(kunde_seit_tagen=as.numeric(today()-Kunde_seit)) %>%
+  ggplot()+geom_histogram(aes(x=kunde_seit_tagen))
 ```
 
 ```{r}
@@ -415,527 +387,38 @@ ggplot(kunden, aes(x=Anzahl_Transaktionen, y=Anzahl_Projekte, label=Kunde, color
   theme(legend.position=c(.13, .78))
 ```
 
-
-# Picks und Losgrößen
+## Datenqualität
 ```{r}
-picks <- materials_b %>% mutate(picks = if_else(Menge < 0, -Menge, 0), lot_size = if_else(Menge >= 0, abs(Menge), 0))
+# Stimmen ArtikelNr und Bezeichnung immer überein? -> Ja
+materials %>% group_by(`Artikel-Bezeichnung`) %>% summarize(a=n_distinct(ArtikelNr)) %>% arrange(desc(a))
+
+# Zeile ohne EinAusDat
+materials %>% filter(is.na(EinAusDat)) %>% select(EinAusDat, BstDat, ORGAKzl, Menge, `Artikel-Bezeichnung`)
+
+# Zeilen mit Ausreißern
+materials %>% filter(Menge < -15000)
 ```
 
-## Plot: Gepickte Menge (Nachfrage)
+## Bestand
+### Plot: Bestand über Zeit
 ```{r}
-picks %>% 
+materials_b %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=picks, color=ArtikelNr)) +
-  ylab("Gepickte Menge")+
-  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
-  # Text linksbündig
-  theme(strip.text.x = element_text(hjust=0.0)) +
-  ggtitle("") +
-  theme(legend.position = "none")
-```
-
-## Plot: Gelieferte Menge/Losgröße (Lieferungen)
-```{r}
-picks %>% 
-  ggplot() +
-  geom_line(aes(x = EinAusDat, y = lot_size, color = `Artikel-Bezeichnung`))+
-  ylab("Gelieferte Menge")+
+  geom_line(aes(x=EinAusDat,y=Bestand,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
+                ))+
   xlab('Datum')+
-  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
-  # Text linksbündig
-  theme(strip.text.x = element_text(hjust=0.0)) +
-  ggtitle("") +
-  theme(legend.position = "none")
-```
+  ggtitle('Lagerbestand über die Zeit')
 
-## Pickgröße vs. Bestell-Losgröße
-```{r}
-picks %>% filter(ArtikelNr == 29523, ) %>% 
-  ggplot() +
-  geom_line(aes(x=EinAusDat,y=picks, col= 'red')) +
-  geom_line(aes(x=EinAusDat,y=lot_size, col='green'))
-```
-
-```{r}
-picks %>% filter(ArtikelNr == 26535, ) %>% 
-  ggplot() +
-  geom_line(aes(x=EinAusDat,y=lot_size))
-```
-
-## Picks vs. Losgröße nach Artikel
-```{r}
-picks %>% filter(lot_size != 0) %>% group_by(`Artikel-Bezeichnung`) %>% mutate(med_lot = median(lot_size)) %>% 
-  ggplot(aes(x=lot_size)) +
-  geom_histogram(colour="black", fill="white")+
-  geom_vline(aes(xintercept=med_lot), color="blue", linetype="dashed", size=0.75)+
-  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
-  # Text linksbündig
-  theme(strip.text.x = element_text(hjust=0.0)) +
-  ggtitle("Verteilung der Bestell-Losgrößen nach Artikel")+
-  labs(x="Losgröße", y="Anzahl Bestellungen")
-```
-
-```{r}
-# Pick-Losgrößen
-picks %>% filter(picks != 0) %>%
-  ggplot(aes(x=picks, group=klasse, fill=klasse)) +
-  geom_histogram() +
-  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
-  # Text linksbündig
-  theme(strip.text.x = element_text(hjust=0.0)) +
-  ggtitle("Verteilung der Pick-Losgrößen nach Artikel")
-```
-
-
-
-```{r}
-picks %>% filter(ArtikelNr == 29523,lot_size !=0 ) %>% 
-  ggplot(aes(x=lot_size)) +
-  geom_histogram(binwidth=.1, colour="black", fill="white")+
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
-```
-
-```{r}
-picks %>% filter(ArtikelNr == 26535,lot_size !=0  ) %>%
-  ggplot(aes(x=lot_size)) + 
-  geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
-```
-```{r}
-picks %>% filter(ArtikelNr == 21866,lot_size !=0  ) %>%
-  ggplot(aes(x=lot_size)) + 
-  geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
-```
-```{r}
-picks %>% filter(ArtikelNr == 2628,lot_size !=0  ) %>%
-  ggplot(aes(x=lot_size)) + 
-  geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
-```
-```{r}
-picks %>% filter(ArtikelNr == 26385,lot_size !=0  ) %>%
-  ggplot(aes(x=lot_size)) + 
-  geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
-```
-```{r}
-picks %>% filter(ArtikelNr == 6203,lot_size !=0  ) %>%
-  ggplot(aes(x=lot_size)) + 
-  geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
-```
-# Median der Bestell-Losgrößen nach Artikel
-```{r}
-picks %>% filter(lot_size !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_lot = median(lot_size))
-```
-# Verteilung der Picks nach Artikel
-```{r}
-picks %>% filter(picks !=0) %>% group_by(`Artikel-Bezeichnung`)%>% mutate(med_pick = median(picks)) %>% 
-  ggplot(aes(x=picks))+ 
-  geom_histogram(colour="black", fill="white")+
-  geom_vline(aes(xintercept=med_pick), color="red", linetype="dashed", size=0.75)+
-  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
-  # Text linksbündig
-  theme(strip.text.x = element_text(hjust=0.0)) +
-  ggtitle("Verteilung der Picks nach Artikel")
-  
-```
-# Median und Durchschnitt der Picks nach Artikel
-```{r}
-picks %>% filter(picks !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_pick = median(picks), avg_picks= mean(picks))
-```
-
-```{r}
-# Berechnen der kumulierten Nachfrage nach Wochen
-weekly_picks <- picks %>%
-  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
-  summarise(picks_per_week= sum(picks)) 
-```
-
-```{r}
-# Berechnen der Durchschnittsnachfrage nach Wochen
-weekly_avg_picks <- picks %>%
-  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
-  summarise(avgpicks_per_week= mean(picks)) 
-```
-
-
-```{r}
-# Berechnen der Bestell-Losgröße nach Wochen
-weekly_meanpick <- weekly_picks %>%  group_by(ArtikelNr) %>%
-  mutate(mean_pick = mean(picks_per_week))
-```
-
-```{r}
-weekly_picks %>% 
-  ggplot() +
-  geom_line(aes(x=week ,y=picks_per_week, group= ArtikelNr, col= ArtikelNr))
-```
-```{r}
-# Berechnen der Durchschnittlichen Bestell-Losgröße nach Wochen
-weekly_avg_picks %>% 
-  ggplot() +
-  geom_line(aes(x=week ,y=avgpicks_per_week, group= ArtikelNr, col= ArtikelNr))
-```
-
-# Zeitreihenanalyse
-## Baseline-Modell (Durchschnitt)
-```{r}
-materials_b <- materials_b %>% group_by(ArtikelNr) %>% mutate(Baseline = mean(Menge))
-
-evaluation = data.frame(Model = "Baseline",
-                        MFE = numeric(1),
-                        MAE = numeric(1),
-                        MSE = numeric(1),
-                        sMAPE = numeric(1))
-# MFE berechnen
-evaluation[evaluation$Model == "Baseline",] $MFE = mean(materials_b$Menge - materials_b$Baseline)
-
-evaluation[evaluation$Model == "Baseline",] $MAE = mean(abs(materials_b$Menge - materials_b$Baseline))
-
-
-evaluation[evaluation$Model == "Baseline",] $MSE = mean((materials_b$Menge - materials_b$Baseline)^2)
-
-
-evaluation[evaluation$Model == "Baseline",] $sMAPE = smape(materials_b$Menge, materials_b$Baseline)
-
-evaluation
-```
-
-## Gesamtmodell
-```{r}
-# Monatliche Durchschnittsnachfrage nehmen
-materials_B_aus <- materials_b %>%
-  filter(Menge < 0) %>%
-  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
-  summarize(menge_pro_monat= sum(-Menge))
-
-# Gesamt-DataFrame
-zeitreihen_alle_materialien <- data.frame()
-
-for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
-  cat("\n\n-------------------------------------\nCurrent material: ", mat)
-  mat_subset <- materials_B_aus %>% filter(`Artikel-Bezeichnung` == mat)
-  ts <- ts(mat_subset$menge_pro_monat, frequency = 12)
-  #plot.ts(ts_3d_Scheiben)
-  
-  # Create model
-  model <- ets(ts, model="ZZZ")
-  print(model)
-  
-  fcast <- forecast(model, 12)
-  
-  # DataFrame für Originaldaten
-  df_orig = data.frame(
-    period = seq(1, length(fcast$x), 1), 
-    bestand = as.numeric(fcast$x), 
-    group = rep("Original", length(fcast$x)))
-  
-  # DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
-  df_fcast = data.frame(
-    period = seq(1, length(fcast$fitted)+length(fcast$mean), 1), 
-    bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
-    group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
-  
-  # In ein DataFrame zusammenführen
-  df = rbind(df_orig, df_fcast)
-  
-  # In Gesamt-DataFrame hinzufügen
-  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
-  
-  # Plot (print() hinzufügen, wenn jeder Plot einzeln ausgegeben werden soll)
-  ggplot(df, aes(x = period, y = bestand, colour = group)) +
-    geom_line()+
-    xlab("Periode") +
-    ylab("Nachfrage") +
-    ggtitle("Gesamtmodell (Projekt + Großhandel) für Artikel:", mat) +
-    theme(legend.title = element_blank()
-  )
-} 
-
-# Für alle Materialien plotten
-ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
-    geom_line()+
-    facet_wrap(~Artikel, nrow=3, scales="free_y")+
-    xlab("Periode") +
-    ylab("Nachfrage") +
-    ggtitle("Gesamtmodell (Projekt + Großhandel)") +
-    theme(legend.title = element_blank())
+ggplot(data=materials_b, aes(x=EinAusDat, y=Bestand)) +
+    facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free_y") +
+    geom_line() +
+    xlab("Zeit") + 
+    ylab("Bestand") +
+    theme(legend.position = "none")
 
 ```
 
-
-
-## Projektbetrieb
-```{r}
-# Monatliche Durchschnittsnachfrage - neu gruppieren für richtige Werte
-materials_B_aus <- materials_b %>%
-  filter(Menge < 0) %>%
-  ## CHANGE MADE HERE ##
-  filter(klasse == "Projekt") %>%
-  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
-  summarize(menge_pro_monat= sum(-Menge))
-
-# Gesamt-DataFrame
-zeitreihen_alle_materialien <- data.frame()
-
-# Projektbetrieb
-for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
-  cat("\n\n-------------------------------------\nCurrent material: ", mat)
-  mat_subset <- materials_B_aus %>% filter(`Artikel-Bezeichnung` == mat)
-  ts <- ts(mat_subset$menge_pro_monat, frequency = 12)
-  
-  # Create model
-  model <- ets(ts, model="ZZZ")
-  print(model)
-  
-  fcast <- forecast(model, 12)
-  
-  # DataFrame für Originaldaten
-  df_orig = data.frame(
-    period = seq(1, length(fcast$x), 1), 
-    bestand = as.numeric(fcast$x), 
-    group = rep("Original", length(fcast$x)))
-  
-  # DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
-  df_fcast = data.frame(
-    period = seq(1, length(fcast$fitted)+length(fcast$mean), 1), 
-    bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
-    group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
-  
-  # In ein großes DataFrame zusammenführen
-  df = rbind(df_orig, df_fcast)
-  
-  # In Gesamt-DataFrame hinzufügen
-  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
-  
-  # Plot
-  ggplot(df, aes(x = period, y = bestand, colour = group)) +
-    geom_line()+
-    xlab("Periode") +
-    ylab("Nachfrage") +
-    ggtitle("Modell auf Projektdaten für Artikel:", mat) +
-    theme(legend.title = element_blank())
-} 
-
-# Für alle Materialien plotten
-ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
-    geom_line()+
-    facet_wrap(~Artikel, nrow=3, scales="free_y")+
-    xlab("Periode") +
-    ylab("Nachfrage") +
-    ggtitle("Modell für Projektbetrieb") +
-    theme(legend.title = element_blank())
-```
-
-## Großhandel
-```{r}
-# Monatliche Durchschnittsnachfrage - neu gruppieren für richtige Werte
-materials_B_aus <- materials_b %>%
-  filter(Menge < 0) %>%
-  ## CHANGE MADE HERE ##
-  filter(klasse == "Handel") %>%
-  mutate(cum_sum_aus = -cumsum(Menge)) %>%
-  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
-  summarize(menge_pro_monat= sum(-Menge))
-
-# Gesamt-DataFrame
-zeitreihen_alle_materialien <- data.frame()
-
-for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
-  cat("\n\n-------------------------------------\nCurrent material: ", mat)
-  mat_subset <- materials_B_aus %>% filter(`Artikel-Bezeichnung` == mat)
-  if (nrow(mat_subset) == 0) {
-    cat("\nNo data available for ", mat)
-    next
-  }
-  
-  ts <- ts(mat_subset$menge_pro_monat, frequency = 12)
-  
-  # Create model
-  model <- ets(ts, model="ZZZ")
-  print(model)
-  
-  fcast <- forecast(model, 12)
-  
-  # DataFrame für Originaldaten
-  df_orig = data.frame(
-    period = seq(1, length(fcast$x), 1), 
-    bestand = as.numeric(fcast$x), 
-    group = rep("Original", length(fcast$x)))
-  
-  # DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
-  df_fcast = data.frame(
-    period = seq(1, length(fcast$fitted)+length(fcast$mean), 1), 
-    bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
-    group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
-  
-  # In ein großes DataFrame zusammenführen
-  df = rbind(df_orig, df_fcast)
-  
-  # In Gesamt-DataFrame hinzufügen
-  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
-  
-  # Plot
-  ggplot(df, aes(x = period, y = bestand, colour = group)) +
-    geom_line()+
-    xlab("Periode") +
-    ylab("Nachfrage") +
-    ggtitle("Modell auf Großhandelsdaten für Artikel:", mat) +
-    theme(legend.title = element_blank())
-} 
-
-# Für alle Materialien plotten
-ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
-    geom_line()+
-    facet_wrap(~Artikel, nrow=3, scales="free_y")+
-    xlab("Periode") +
-    ylab("Nachfrage") +
-    ggtitle("Modell für Großhandel") +
-    theme(legend.title = element_blank())
-```
-
-# Reichweite
-## Zeit bis zum ersten Pick
-```{r}
-# Reichweite bis 1. Pick = Zeit zwischen Bestelleingang (geliefertAm) und erster Transaktion (BereitDat, PjPhaseDat)
-materials_b_1st_pick <- materials_b %>%
-  # Nach Datum sortieren
-  arrange(EinAusDat) %>%
-  # Nach Material gruppieren
-  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
-  mutate(bis_erster_pick = if_else(lead(EinAutDatTyp) %in% c("BereitDat", "PjPhaseDat"), as.numeric(difftime(lead(EinAusDat), EinAusDat, units="days")), NA)) %>%
-  filter(EinAutDatTyp == "geliefertAm")
-  # summarize(mean_bis_pick=mean(bis_erster_pick, na.rm=TRUE)) # NA remove for last entry
-
-# Histogramm
-ggplot(materials_b_1st_pick, aes(x=bis_erster_pick)) +
-    geom_histogram(color="black", fill="white") +
-    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
-    # Text linksbündig
-    theme(strip.text.x = element_text(hjust=0.0)) +
-    ggtitle("Verteilung der Zeit von Bestelleingang bis zum ersten Pick [in Tagen]")
-
-# Zeit zwischen Picks
-# Mit WBZ gegenüberstellen
-```
-
-## Reichweite bis nächste Bestellung
-```{r}
-# = Zeit zwischen Bestelleingang und nächster Bestellung (BstDat -> wenn wir bestellen, nicht Eingang)
-materials_b_n_bestellung <- materials_b %>%
-  arrange(EinAusDat, ArtikelNr) %>%
-  filter(EinAutDatTyp == "geliefertAm") %>%
-  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
-  mutate(bis_n_bestl = as.numeric(difftime(lead(BstDat), EinAusDat, units="days")))
-  # summarize(mean_bis_bestl=mean(bis_n_bestl, na.rm=TRUE)) # NA remove for last entry
-
-# Histogramm
-ggplot(materials_b_n_bestellung, aes(x=bis_n_bestl)) +
-    geom_histogram(color="black", fill="white") +
-    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
-    # Text linksbündig
-    theme(strip.text.x = element_text(hjust=0.0)) +
-    ggtitle("Verteilung der Reichweite von Bestelleingang bis zur nächsten Bestellung [in Tagen]")
-```
-
-# Nachfrage aggregiert nach Zeit
-## Tägliche Nachfrage
-```{r}
-# Nachfrage (Lagerausgänge = negative Werte) pro Tag
-materials_b_tägl_menge <- materials_b %>%
-  filter(Menge < 0) %>%
-  group_by(EinAusDat, `Artikel-Bezeichnung`, klasse) %>%
-  summarize(tägl_menge=-sum(Menge))
-
-# Nachfrageverlauf über die Zeit
-materials_b_tägl_menge %>% ggplot() +
-  geom_point(aes(x=EinAusDat, y=tägl_menge, group=klasse, color=klasse), size=0.75)+
-  facet_wrap(~`Artikel-Bezeichnung`, scales="free_y", nrow=3)+
-    theme(strip.text.x = element_text(hjust=0.0))+
-  scale_color_manual(values=c("Handel" = "#2A2AD5",
-                             "Projekt" = "#FF8000",
-                             "Einkauf" = "#00FFFF", 
-                             "Anderes" = "grey"))+
-  labs(x="", y="Tägliche Nachfrage", color="Geschäftsbereich")
-
-# 90% und 95% Perzentile
-materials_b_tägl_menge %>%
-  group_by(`Artikel-Bezeichnung`) %>%
-  summarize(percentile_90 = quantile(tägl_menge, probs=0.9),
-            percentile_95 = quantile(tägl_menge, probs=0.95))
-
-# Histogramm
-ggplot(materials_b_tägl_menge, aes(x=tägl_menge, group=klasse, fill=klasse)) +
-    geom_histogram() +
-    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
-    # Text linksbündig
-    theme(strip.text.x = element_text(hjust=0.0)) +
-    ggtitle("Verteilung der täglichen Ausgangsmengen (Nachfrage)")+
-  scale_fill_manual(values=c("Handel" = "#2A2AD5",
-                             "Projekt" = "#FF8000",
-                             "Einkauf" = "#00FFFF", 
-                             "Anderes" = "grey"))+
-  labs(y="", x="Tägliche Nachfrage", fill="Geschäftsbereich")
-```
-
-## Monatliche Nachfrage
-```{r}
-# Menge aggregiert auf Monatsebene (lassen sich Trends erkennen?)
-materials_b_monatl_menge <- materials_b %>%
-  filter(Menge < 0) %>%
-  group_by(month=as.yearmon(EinAusDat), `Artikel-Bezeichnung`) %>%
-  summarize(monatl_menge=-sum(Menge))
-
-ggplot(data=materials_b_monatl_menge, aes(x=month, y=monatl_menge)) +
-  geom_line() +
-  facet_wrap(~`Artikel-Bezeichnung`, scales = 'free_y') +
-  # Text linksbündig
-  theme(strip.text.x = element_text(hjust=0.0)) +
-  # Rotate Axis Ticks
-  #theme(axis.text.x = element_text(angle = 90)) +
-  ylab("Monatliche Nachfrage") +
-  geom_smooth(method=lm)
-```
-
-# Wiederbeschaffungszeit (WBZ)
-```{r}
-WBZ_Daten <- materials_b %>% filter(EinAutDatTyp == "geliefertAm")
-WBZ_Daten$WBZ <- WBZ_Daten$EinAusDat - WBZ_Daten$BstDat
-
-# Nur positive WBZ (negative basieren auf fehlerhaften Transaktionen)
-WBZ_Daten <- WBZ_Daten %>% filter(WBZ > 0)
-WBZ_Daten[,c("ArtikelNr", "Artikel-Bezeichnung", "BstDat", "EinAusDat", "WBZ")]
-
-# Histogramm
-WBZ_Daten %>%
-  ggplot(aes(x=WBZ)) +
-  geom_histogram() +
-  facet_wrap(~`Artikel-Bezeichnung`, scales = "free") +
-  labs(x = "Wiederbeschaffungszeit", y = "Anzahl") +
-  geom_vline(data=WBZ_Daten %>% group_by(`Artikel-Bezeichnung`) %>% summarize(hist_mean=mean(WBZ)), aes(xintercept=hist_mean), color="blue", linetype="dashed", size=0.5)+
-    # Text linksbündig
-    theme(strip.text.x = element_text(hjust=0.0))
-
-# Verteilungmasse
-WBZ_Daten %>% 
-  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
-  summarize(mean = mean(WBZ),
-            median = median(WBZ),
-            sd = sd(WBZ))
-
-# Im Zeitverlauf - täglich
-WBZ_Daten %>%
-  ggplot(aes(x=EinAusDat, y=WBZ))+
-  geom_point(size=0.75)+
-  facet_wrap(~`Artikel-Bezeichnung`, scales = "free_y")+
-    # Text linksbündig
-    theme(strip.text.x = element_text(hjust=0.0))
-```
-
-# Bestandsanalyse
-
+### Alt
 ```{r}
 mat_verlauf <- materials_b %>%
   filter(EinAutDatTyp == "geliefertAm" | EinAutDatTyp == "BereitDat" | EinAutDatTyp == "PjPhaseDat") %>%
@@ -1003,88 +486,311 @@ nachf_in_WBZ %>% group_by(ArtikelNr) %>% summarize(quantile(pick_cum_sum_between
 ordered_quantity
 ```
 
+Der Plot zeigt die Verteilung der cumulierten Summe der Picks dar am Bestelltag der nächsten Bestellung. Dadurch dass der Wert nicht eindeutig ist, schiließen wir das der Logistiker kein eindeutigen Bestellmenge* hat.
 
-Der Plot zeigt die Verteilung der cumulierten Summe der Picks dar am Bestelltag der nächsten Bestellung. Dadurch dass der Wert nicht eindeutig ist, schiließen wir das der Logistiker kein eindeutigen Bestellmenge* hat
-
-# Sicherheitsbestand
+## Picks und Losgrößen
 ```{r}
-# Parameter
-perzentil_meldebestand <- 0.5
-perzentil_nachfrage <- 0.5
-perzentil_wbz <- 0.9
+picks <- materials_b %>% mutate(picks = if_else(Menge < 0, -Menge, 0), lot_size = if_else(Menge >= 0, abs(Menge), 0))
+```
 
-# Erstellung DataFrame
-# Meldebestand
-meldebestand <- mat_verlauf %>%
-  filter(EinAutDatTyp =='geliefertAm') %>%
-  select(ArtikelNr, BstDat,) %>%
-  left_join(
-    mat_verlauf %>%
-    select(EinAusDat,EinAutDatTyp, `Artikel-Bezeichnung`,Menge, Bestand, cum_sum) %>%
-    filter(Menge<0) , join_by(ArtikelNr, closest(BstDat >= EinAusDat))
-  ) %>%
-  drop_na() %>%
-  group_by(`Artikel-Bezeichnung`) %>%
-  summarize(Meldebestand_quantile = quantile(Bestand, probs=perzentil_meldebestand))
+### Plot: Gepickte Menge (Nachfrage)
+```{r}
+picks %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=picks, color=ArtikelNr)) +
+  ylab("Gepickte Menge")+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("") +
+  theme(legend.position = "none")
+```
 
-# Tägliche Nachfrage
-tägl_nachfrage <- materials_b_tägl_menge %>%
-  filter(EinAusDat <= "2023-06-12") %>%
-  group_by(`Artikel-Bezeichnung`) %>%
-  summarize(Nachfrage_quantile=quantile(tägl_menge, perzentil_nachfrage))
+### Plot: Gelieferte Menge/Losgröße (Lieferungen)
+```{r}
+picks %>% 
+  ggplot() +
+  geom_line(aes(x = EinAusDat, y = lot_size, color = `Artikel-Bezeichnung`))+
+  ylab("Gelieferte Menge")+
+  xlab('Datum')+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("") +
+  theme(legend.position = "none")
+```
 
-# WBZ in Tagen
-wbz <- WBZ_Daten %>% 
-  filter(EinAusDat <= "2023-06-12") %>%
-  group_by(`Artikel-Bezeichnung`) %>% summarize(WBZ_quantile=quantile(WBZ, perzentil_wbz))
+### Pickgröße vs. Bestell-Losgröße
+```{r}
+picks %>% filter(ArtikelNr == 29523, ) %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=picks, col= 'red')) +
+  geom_line(aes(x=EinAusDat,y=lot_size, col='green'))
+```
 
-sicherheitsbestand <- materials_b %>% 
-  filter(EinAusDat <= "2023-06-12") %>%
-  group_by(`Artikel-Bezeichnung`) %>% summarize(ArtikelNr=first(ArtikelNr))
-colnames(sicherheitsbestand) <- c("Artikel-Bezeichnung", "ArtikelNr")
+```{r}
+picks %>% filter(ArtikelNr == 26535, ) %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=lot_size))
+```
 
-sicherheitsbestand
+### Picks vs. Losgröße nach Artikel
+```{r}
+picks %>% filter(lot_size != 0) %>% group_by(`Artikel-Bezeichnung`) %>% mutate(med_lot = median(lot_size)) %>% 
+  ggplot(aes(x=lot_size)) +
+  geom_histogram()+
+  geom_vline(aes(xintercept=med_lot), color="blue", linetype="dashed", size=0.75)+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("Verteilung der Bestell-Losgrößen nach Artikel")+
+  labs(x="Losgröße", y="Anzahl Bestellungen")
 
-#sicherheitsbestand <- inner_join(sicherheitsbestand, meldebestand, by="Artikel-Bezeichnung")
-sicherheitsbestand <- inner_join(sicherheitsbestand, tägl_nachfrage, by="Artikel-Bezeichnung")
-sicherheitsbestand <- inner_join(sicherheitsbestand, wbz, by="Artikel-Bezeichnung")
+# Bifacial Glas separat plotten
+picks %>% filter(lot_size != 0, `Artikel-Bezeichnung`=="DAS N-TOPcon Bifacial Glas-Glas (2+2mm) Black 415 WP") %>% group_by(`Artikel-Bezeichnung`) %>% mutate(med_lot = median(lot_size)) %>% 
+  ggplot(aes(x=lot_size)) +
+  geom_histogram()+
+  geom_vline(aes(xintercept=med_lot), color="blue", linetype="dashed", size=0.75)+
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  labs(x="", y="")+
+  xlim(936-10, 936+10)
+```
 
-sicherheitsbestand
-
-# Sicherheitsbestand berechnen
-sicherheitsbestand <- sicherheitsbestand %>%
-  mutate(nachf_in_WBZ_agg = as.numeric(Nachfrage_quantile * WBZ_quantile))
-  #mutate(sicherheitsbestand = as.numeric(Meldebestand_quantile - Nachfrage_quantile * WBZ_quantile),
-
-helper <- nachf_in_WBZ %>% 
-  filter(EinAusDat <= "2023-06-12") %>%
-  group_by(ArtikelNr) %>% summarize(nachf_in_WBZ=quantile(pick_cum_sum_between_orders, 0.5, na.rm=TRUE))
-
-inner_join(sicherheitsbestand, helper, by="ArtikelNr")
+```{r}
+# Pick-Losgrößen
+picks %>% filter(picks != 0) %>%
+  ggplot(aes(x=picks, group=klasse, fill=klasse)) +
+  geom_histogram() +
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("Verteilung der Pick-Losgrößen nach Artikel")
 ```
 
 
 
 ```{r}
-meldebestand <- mat_verlauf %>%
-  filter(EinAutDatTyp =='geliefertAm') %>%
-  select(ArtikelNr, BstDat,) %>%
-  left_join(
-    mat_verlauf %>%
-    select(EinAusDat,EinAutDatTyp, `Artikel-Bezeichnung`,Menge, Bestand, cum_sum) %>%
-    filter(Menge<0) , join_by(ArtikelNr, closest(BstDat >= EinAusDat))
-  ) %>%
-  drop_na()
-
-meldebestand
+picks %>% filter(ArtikelNr == 29523,lot_size !=0 ) %>% 
+  ggplot(aes(x=lot_size)) +
+  geom_histogram(binwidth=.1, colour="black", fill="white")+
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
 ```
 
-# Neuer Ansatz
-## Bestellpolitik
 ```{r}
-perzentil_nachfrage <- 0.7
-perzentil_wbz <- 0.0  # 0 = min(wbz)
+picks %>% filter(ArtikelNr == 26535,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 21866,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 2628,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 26385,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
+```{r}
+picks %>% filter(ArtikelNr == 6203,lot_size !=0  ) %>%
+  ggplot(aes(x=lot_size)) + 
+  geom_histogram(binwidth=1,colour="black", fill="white") +
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+```
 
+### Median der Bestell-Losgrößen nach Artikel
+```{r}
+picks %>% filter(lot_size !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_lot = mean(lot_size))
+```
+### Verteilung der Picks nach Artikel
+```{r}
+picks %>% filter(picks !=0) %>% group_by(`Artikel-Bezeichnung`)%>% mutate(med_pick = median(picks)) %>% 
+  ggplot(aes(x=picks))+ 
+  geom_histogram(colour="black", fill="white")+
+  geom_vline(aes(xintercept=med_pick), color="red", linetype="dashed", size=0.75)+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free") +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  ggtitle("Verteilung der Picks nach Artikel")
+  
+```
+### Median und Durchschnitt der Picks nach Artikel
+```{r}
+picks %>% filter(picks !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_pick = median(picks), avg_picks= mean(picks))
+```
+
+```{r}
+# Berechnen der kumulierten Nachfrage nach Wochen
+weekly_picks <- picks %>%
+  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  summarise(picks_per_week= sum(picks)) 
+```
+
+```{r}
+# Berechnen der Durchschnittsnachfrage nach Wochen
+weekly_avg_picks <- picks %>%
+  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  summarise(avgpicks_per_week= mean(picks)) 
+```
+
+
+```{r}
+# Berechnen der Bestell-Losgröße nach Wochen
+weekly_meanpick <- weekly_picks %>%  group_by(ArtikelNr) %>%
+  mutate(mean_pick = mean(picks_per_week))
+```
+
+```{r}
+weekly_picks %>% 
+  ggplot() +
+  geom_line(aes(x=week ,y=picks_per_week, group= ArtikelNr, col= ArtikelNr))
+```
+```{r}
+# Berechnen der Durchschnittlichen Bestell-Losgröße nach Wochen
+weekly_avg_picks %>% 
+  ggplot() +
+  geom_line(aes(x=week ,y=avgpicks_per_week, group= ArtikelNr, col= ArtikelNr))
+```
+
+
+
+
+## Nachfrage
+### Tägliche Nachfrage
+```{r}
+# Nachfrage (Lagerausgänge = negative Werte) pro Tag
+materials_b_tägl_menge <- materials_b %>%
+  filter(Menge < 0) %>%
+  group_by(EinAusDat, `Artikel-Bezeichnung`, klasse) %>%
+  summarize(tägl_menge=-sum(Menge))
+
+# Nachfrageverlauf über die Zeit
+materials_b_tägl_menge %>% ggplot() +
+  geom_point(aes(x=EinAusDat, y=tägl_menge, group=klasse, color=klasse), size=0.75)+
+  facet_wrap(~`Artikel-Bezeichnung`, scales="free_y", nrow=3)+
+    theme(strip.text.x = element_text(hjust=0.0))+
+  scale_color_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))+
+  labs(x="", y="Tägliche Nachfrage", color="Geschäftsbereich")
+
+# 90% und 95% Perzentile
+materials_b_tägl_menge %>%
+  group_by(`Artikel-Bezeichnung`) %>%
+  summarize(percentile_90 = quantile(tägl_menge, probs=0.9),
+            percentile_95 = quantile(tägl_menge, probs=0.95))
+
+# Histogramm
+ggplot(materials_b_tägl_menge, aes(x=tägl_menge, group=klasse, fill=klasse)) +
+    geom_histogram() +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free', nrow=3) +
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0)) +
+    ggtitle("Verteilung der täglichen Ausgangsmengen (Nachfrage)")+
+  scale_fill_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))+
+  labs(y="", x="Tägliche Nachfrage", fill="Geschäftsbereich")+
+  theme(legend.position="bottom")
+```
+
+### Plots: Monatliche Nachfrage
+```{r}
+# Nachfrage nach Geschäftsbereich
+materials %>% filter(Menge <0, EinAusDat<="2023-06-12") %>% group_by(mon=as.yearmon(EinAusDat), klasse) %>% summarize(s=sum(-Menge)) %>% ggplot(aes(x=mon, y=s))+
+  geom_col(aes(group=klasse, fill=klasse))+
+  scale_fill_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))+
+  labs(y="Monatliche Nachfrage", x="", fill="Geschäftsbereich")+
+  theme(legend.position="bottom")+
+  geom_smooth(data=materials %>% filter(Menge <0, EinAusDat<="2023-06-12") %>% group_by(mon=as.yearmon(EinAusDat)) %>% summarize(s=sum(-Menge)), aes(x=mon, y=s), method=lm, se=FALSE, color="black")+
+  ylim(0, NA)
+```
+
+
+```{r}
+# Monatliche Nachfrage nach Artikel
+materials_b_monatl_menge <- materials_b %>%
+  filter(Menge < 0) %>%
+  group_by(month=as.yearmon(EinAusDat), `Artikel-Bezeichnung`) %>%
+  summarize(monatl_menge=-sum(Menge))
+
+ggplot(data=materials_b_monatl_menge, aes(x=month, y=monatl_menge)) +
+  geom_line() +
+  facet_wrap(~`Artikel-Bezeichnung`, scales = 'free_y') +
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0)) +
+  # Rotate Axis Ticks
+  #theme(axis.text.x = element_text(angle = 90)) +
+  ylab("Monatliche Nachfrage") +
+  geom_smooth(method=lm)
+```
+### Plot: Nachfrage nach Geschäftsbereich
+```{r}
+materials %>% filter(Menge <0) %>% group_by(klasse) %>% summarize(Nachfrage=sum(-Menge)/10**6) %>%
+  ggplot(aes(x=reorder(klasse, -Nachfrage), y=Nachfrage, fill=klasse))+
+  geom_col()+
+  scale_fill_manual(values=c("Handel" = "#2A2AD5",
+                             "Projekt" = "#FF8000",
+                             "Einkauf" = "#00FFFF", 
+                             "Anderes" = "grey"))+
+  labs(x="", y="Nachfrage [mio. Stück]") +
+  theme(legend.position = "none")
+```
+
+## Wiederbeschaffungszeit (WBZ)
+```{r}
+WBZ_Daten <- materials_b %>% filter(EinAutDatTyp == "geliefertAm")
+WBZ_Daten$WBZ <- WBZ_Daten$EinAusDat - WBZ_Daten$BstDat
+
+# Nur positive WBZ (negative basieren auf fehlerhaften Transaktionen)
+WBZ_Daten <- WBZ_Daten %>% filter(WBZ > 0)
+WBZ_Daten[,c("ArtikelNr", "Artikel-Bezeichnung", "BstDat", "EinAusDat", "WBZ")]
+
+# Histogramm
+WBZ_Daten %>%
+  ggplot(aes(x=WBZ)) +
+  geom_histogram() +
+  facet_wrap(~`Artikel-Bezeichnung`, scales = "free", nrow=3) +
+  labs(x = "Wiederbeschaffungszeit", y = "Anzahl") +
+  geom_vline(data=WBZ_Daten %>% group_by(`Artikel-Bezeichnung`) %>% summarize(hist_mean=mean(WBZ)), aes(xintercept=hist_mean), color="blue", linetype="dashed", size=0.5)+
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0))
+
+# Verteilungmasse
+WBZ_Daten %>% 
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  summarize(mean = mean(WBZ),
+            median = median(WBZ),
+            sd = sd(WBZ))
+
+# Im Zeitverlauf - täglich
+WBZ_Daten %>%
+  ggplot(aes(x=EinAusDat, y=WBZ))+
+  geom_point(size=0.75)+
+  facet_wrap(~`Artikel-Bezeichnung`, scales = "free_y", nrow=3)+
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0))+
+  labs(y="Wiederbeschaffungszeit")
+```
+
+# Phase 4: Analyse & Modellierung
+## Nachfrage und WBZ vorbereiten
+```{r}
 # Zukunftswerte filtern
 materials_b <- materials_b %>% filter(EinAusDat <= "2023-06-12")
 
@@ -1097,6 +803,7 @@ tägl_nachfrage <- materials_b %>%
   summarize(Konservativ=quantile(tägl_menge, 0.9),
             Ausgewogen=quantile(tägl_menge, 0.5),
             Risikofreudig=quantile(tägl_menge, 0.5))
+tägl_nachfrage
 
 # Wiederbeschaffungszeit
 wbz <- materials_b %>% filter(EinAutDatTyp == "geliefertAm") %>%
@@ -1106,43 +813,44 @@ wbz <- materials_b %>% filter(EinAutDatTyp == "geliefertAm") %>%
   summarize(Konservativ=quantile(WBZ, 0.9),
             Ausgewogen=quantile(WBZ, 0.5),
             Risikofreudig=quantile(WBZ, 0.0))
-
-# Bestellpolitik: Optimale Losgröße als Nachfrage * minimale WBZ berechnen
-bestellpolitik <- inner_join(tägl_nachfrage, wbz, by="Artikel-Bezeichnung",
-                             suffix=c(".Nachfrage", ".WBZ"))
-#bestellpolitik <- bestellpolitik %>% mutate(Losgröße.Empfehlung = as.numeric(Nachfrage_quantil*WBZ_quantil)) 
-bestellpolitik
+wbz
 ```
 
 ## Bestandverlauf mit neuer Bestellpolitik
 ```{r}
 alle_artikel <- data.frame()
 
+# Loop über alle Bestellpolitiken
 for (politik in c("Konservativ", "Ausgewogen", "Risikofreudig")) {
+  cat("\n\n\n________________________________\nVerfolgte Bestellpolitik:", politik)
+  
+# Loop über alle Artikel/Materialien
 for (mat in materials_group_b) {
 
   # Start-Parameter
   artikel <- mat
   artikelNr <- first(materials_b[materials_b$`Artikel-Bezeichnung` == artikel, "ArtikelNr"])
   
-  # Quantile
+  # Quantile heraussuchen
   spalte <- ifelse(politik=="Konservativ", "Konservativ", ifelse(politik=="Ausgewogen", "Ausgewogen", "Risikofreudig"))
-  
   wbz_quantil <- as.numeric(wbz[wbz$`Artikel-Bezeichnung`==mat, spalte])
   nachfrage_quantil <- as.numeric(tägl_nachfrage[tägl_nachfrage$`Artikel-Bezeichnung`==mat, spalte])
+  
+  # Losgröße berechnen nach Formel
   losgröße <- nachfrage_quantil * wbz_quantil
   startbestand <- losgröße
   
+  # Reale Nachfragewerte vorbereiten zum Iterieren
   nachfrage <- materials_b %>%
     filter(Menge < 0, `Artikel-Bezeichnung`==artikel, !is.na(EinAusDat)) %>%
     mutate(cum_sum=cumsum(Menge))
   
-  # Bestellzeitpunkte und -mengen berechnen
   # Variablen für Loop
   bestand <- startbestand
   bestelldaten <- c()
   bestellmengen <- c()
   
+  # Bestelldaten berechnen
   for (i in 1:nrow(nachfrage)) {
     row <- nth(nachfrage, i)
     
@@ -1205,7 +913,7 @@ for (mat in materials_group_b) {
   cat("\nAnzahl Bestellungen = ", nrow(mengen))
   cat("\nBestellungen MBG = ", nrow(materials_b %>% filter(Menge > 0, `Artikel-Bezeichnung`==artikel)))
   cat("\nAnzahl Stock-outs = ", nrow(ges %>% filter(cum_sum < 0 & lag(cum_sum) >=0)))
-  cat("\nAnzahl Stock-outs MBG = ", nrow(materials_b %>% filter(Bestand < 0 & lag(Bestand) >=0)))
+  cat("\nAnzahl Stock-outs MBG = ", nrow(materials_b %>% filter(`Artikel-Bezeichnung`==artikel, Bestand < 0 & lag(Bestand) >=0)))
   
   # Individuelle Ergebnisse plotten
   #ggplot(data=vergleich) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+ggtitle(artikel)
@@ -1219,24 +927,364 @@ alle_artikel <- rbind(alle_artikel, materials_b %>% mutate(cum_sum=Bestand, Best
                    )
 ```
 
+## Plots der Bestandspolitiken
 ```{r}
-# Gesamtplot
-ggplot(data=alle_artikel) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scale="free_y")+ylab("Bestand")+
-  scale_color_manual(values=c("MBG"="#A4182D", "Konservativ"="#377eb8", "Ausgewogen"="#4daf4a", "Risikofreudig"="yellow"))
+# Gesamtplot über alle Materialien
+ggplot(data=alle_artikel) +
+  geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+
+  facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scale="free_y")+
+  ylab("Bestand")+
+  scale_color_manual(values=c("MBG"="#A4182D", "Konservativ"="#377eb8", "Ausgewogen"="#4daf4a", "Risikofreudig"="#ff7f00"))+
+  # Text linksbündig
+  theme(strip.text.x = element_text(hjust=0.0))
+```
+
+```{r}
+# Einzelplots
+mat <- "Rahmenloser Bildhalter Antireflexglas 29,7 x 42"
+
+ggplot(data=alle_artikel %>% filter(`Artikel-Bezeichnung`==mat)) +
+  geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik), show.legend=FALSE)+
+  labs(y="Bestand", x="")+
+  ggtitle(mat)+
+  
+  # Zusätze für schönere Legende
+  geom_point(aes(x=EinAusDat, y=cum_sum, fill=Bestellpolitik), size=-1)+
+  theme(legend.position = "bottom")+
+  guides(fill = guide_legend(keywidth = unit(1, "cm"),
+                               keyheight = unit(1, "cm"),
+                               override.aes = list(shape = 22,
+                                                   size = 10)))+
+  scale_color_manual(values=c("MBG"="#A4182D", "Konservativ"="#377eb8", "Ausgewogen"="#4daf4a", "Risikofreudig"="#ff7f00"))+
+  scale_fill_manual(values=c("MBG"="#A4182D", "Konservativ"="#377eb8", "Ausgewogen"="#4daf4a", "Risikofreudig"="#ff7f00"))
 ```
 
 ## Quantifizierung der Einsparungen
 ```{r}
-kosten <- data.frame(Artikel=materials_group_b,
+kosten <- data.frame(`Artikel-Bezeichnung`=materials_group_b,
                      Stückpreis=c(170, 36.58, 2.85*280/100, 9.39, 11.77, 28.1/500))
+colnames(kosten) <- c("Artikel-Bezeichnung", "Stückpreis")
 
-alle_artikel %>% group_by(Artikel, Bestellpolitik) %>% summarize(gesamtbestand=sum(cum_sum)) %>% pivot_wider(names_from=Bestellpolitik, values_from=gesamtbestand) %>%
-  mutate(Unterschied=MBG - Empfehlung) %>%
-  inner_join(kosten, by="Artikel") %>%
+alle_artikel %>% group_by(`Artikel-Bezeichnung`, Bestellpolitik) %>% summarize(gesamtbestand=sum(cum_sum)) %>% pivot_wider(names_from=Bestellpolitik, values_from=gesamtbestand) %>%
+  mutate(Unterschied=MBG - Risikofreudig) %>%
+  inner_join(kosten, by="Artikel-Bezeichnung") %>%
   mutate(Einsparungen=Unterschied*Stückpreis)
 ```
 
+# Anhang
+## Helper-Grafiken
 ```{r}
-politik <- "a"
-ifelse(politik=="Konservativ", "Konservativ", ifelse(politik=="Ausgewogen", "Ausgewogen", "Risikofreudig"))
+# Nachher entfernen
+perzentil <- -3
+ggplot(data.frame(x=c(-3,3)), aes(x)) + 
+  stat_function(fun = dnorm,
+                args = list(mean = 0, sd = 1), 
+                geom = "area", 
+                fill = "#C00000", n = 1001, xlim=c(-3, perzentil)) +
+    stat_function(fun = dnorm,
+                args = list(mean = 0, sd = 1), 
+                geom = "area", 
+                fill = "grey", n = 1001, xlim = c(perzentil, 3)) +
+  labs(x="", y="") +
+  scale_y_continuous(breaks = NULL)+
+  scale_x_continuous(breaks=NULL)+geom_vline(aes(xintercept=-3), color="#C00000", size=2)
+```
+
+## Zeitreihenanalysen
+### Zeitreihenanalyse Nachfrage
+#### Baseline-Modell (Durchschnitt)
+```{r}
+materials_b <- materials_b %>% group_by(ArtikelNr) %>% mutate(Baseline = mean(Menge))
+
+evaluation = data.frame(Model = "Baseline",
+                        MFE = numeric(1),
+                        MAE = numeric(1),
+                        MSE = numeric(1),
+                        sMAPE = numeric(1))
+# MFE berechnen
+evaluation[evaluation$Model == "Baseline",] $MFE = mean(materials_b$Menge - materials_b$Baseline)
+
+evaluation[evaluation$Model == "Baseline",] $MAE = mean(abs(materials_b$Menge - materials_b$Baseline))
+
+
+evaluation[evaluation$Model == "Baseline",] $MSE = mean((materials_b$Menge - materials_b$Baseline)^2)
+
+
+evaluation[evaluation$Model == "Baseline",] $sMAPE = smape(materials_b$Menge, materials_b$Baseline)
+
+evaluation
+```
+
+#### Gesamtmodell
+```{r}
+# Monatliche Durchschnittsnachfrage nehmen
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+# Gesamt-DataFrame
+zeitreihen_alle_materialien <- data.frame()
+
+for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
+  cat("\n\n-------------------------------------\nCurrent material: ", mat)
+  mat_subset <- materials_B_aus %>% filter(`Artikel-Bezeichnung` == mat)
+  ts <- ts(mat_subset$menge_pro_monat, frequency = 12)
+  #plot.ts(ts_3d_Scheiben)
+  
+  # Create model
+  model <- ets(ts, model="ZZZ")
+  print(model)
+  
+  fcast <- forecast(model, 12)
+  
+  # DataFrame für Originaldaten
+  df_orig = data.frame(
+    period = seq(1, length(fcast$x), 1), 
+    bestand = as.numeric(fcast$x), 
+    group = rep("Original", length(fcast$x)))
+  
+  # DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+  df_fcast = data.frame(
+    period = seq(1, length(fcast$fitted)+length(fcast$mean), 1), 
+    bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
+    group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
+  
+  # In ein DataFrame zusammenführen
+  df = rbind(df_orig, df_fcast)
+  
+  # In Gesamt-DataFrame hinzufügen
+  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
+  
+  # Plot (print() hinzufügen, wenn jeder Plot einzeln ausgegeben werden soll)
+  ggplot(df, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Gesamtmodell (Projekt + Großhandel) für Artikel:", mat) +
+    theme(legend.title = element_blank()
+  )
+} 
+
+# Für alle Materialien plotten
+ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    facet_wrap(~Artikel, nrow=3, scales="free_y")+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Gesamtmodell (Projekt + Großhandel)") +
+    theme(legend.title = element_blank())
+
+```
+
+
+
+#### Projektbetrieb
+```{r}
+# Monatliche Durchschnittsnachfrage - neu gruppieren für richtige Werte
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  ## CHANGE MADE HERE ##
+  filter(klasse == "Projekt") %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+# Gesamt-DataFrame
+zeitreihen_alle_materialien <- data.frame()
+
+# Projektbetrieb
+for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
+  cat("\n\n-------------------------------------\nCurrent material: ", mat)
+  mat_subset <- materials_B_aus %>% filter(`Artikel-Bezeichnung` == mat)
+  ts <- ts(mat_subset$menge_pro_monat, frequency = 12)
+  
+  # Create model
+  model <- ets(ts, model="ZZZ")
+  print(model)
+  
+  fcast <- forecast(model, 12)
+  
+  # DataFrame für Originaldaten
+  df_orig = data.frame(
+    period = seq(1, length(fcast$x), 1), 
+    bestand = as.numeric(fcast$x), 
+    group = rep("Original", length(fcast$x)))
+  
+  # DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+  df_fcast = data.frame(
+    period = seq(1, length(fcast$fitted)+length(fcast$mean), 1), 
+    bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
+    group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
+  
+  # In ein großes DataFrame zusammenführen
+  df = rbind(df_orig, df_fcast)
+  
+  # In Gesamt-DataFrame hinzufügen
+  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
+  
+  # Plot
+  ggplot(df, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Modell auf Projektdaten für Artikel:", mat) +
+    theme(legend.title = element_blank())
+} 
+
+# Für alle Materialien plotten
+ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    facet_wrap(~Artikel, nrow=3, scales="free_y")+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Modell für Projektbetrieb") +
+    theme(legend.title = element_blank())
+```
+
+#### Großhandel
+```{r}
+# Monatliche Durchschnittsnachfrage - neu gruppieren für richtige Werte
+materials_B_aus <- materials_b %>%
+  filter(Menge < 0) %>%
+  ## CHANGE MADE HERE ##
+  filter(klasse == "Handel") %>%
+  mutate(cum_sum_aus = -cumsum(Menge)) %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`, month=as.yearmon(EinAusDat)) %>%
+  summarize(menge_pro_monat= sum(-Menge))
+
+# Gesamt-DataFrame
+zeitreihen_alle_materialien <- data.frame()
+
+for (mat in unique(materials_b$`Artikel-Bezeichnung`)) {
+  cat("\n\n-------------------------------------\nCurrent material: ", mat)
+  mat_subset <- materials_B_aus %>% filter(`Artikel-Bezeichnung` == mat)
+  if (nrow(mat_subset) == 0) {
+    cat("\nNo data available for ", mat)
+    next
+  }
+  
+  ts <- ts(mat_subset$menge_pro_monat, frequency = 12)
+  
+  # Create model
+  model <- ets(ts, model="ZZZ")
+  print(model)
+  
+  fcast <- forecast(model, 12)
+  
+  # DataFrame für Originaldaten
+  df_orig = data.frame(
+    period = seq(1, length(fcast$x), 1), 
+    bestand = as.numeric(fcast$x), 
+    group = rep("Original", length(fcast$x)))
+  
+  # DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+  df_fcast = data.frame(
+    period = seq(1, length(fcast$fitted)+length(fcast$mean), 1), 
+    bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
+    group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
+  
+  # In ein großes DataFrame zusammenführen
+  df = rbind(df_orig, df_fcast)
+  
+  # In Gesamt-DataFrame hinzufügen
+  zeitreihen_alle_materialien <- rbind(zeitreihen_alle_materialien, df %>% mutate(Artikel=mat))
+  
+  # Plot
+  ggplot(df, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Modell auf Großhandelsdaten für Artikel:", mat) +
+    theme(legend.title = element_blank())
+} 
+
+# Für alle Materialien plotten
+ggplot(zeitreihen_alle_materialien, aes(x = period, y = bestand, colour = group)) +
+    geom_line()+
+    facet_wrap(~Artikel, nrow=3, scales="free_y")+
+    xlab("Periode") +
+    ylab("Nachfrage") +
+    ggtitle("Modell für Großhandel") +
+    theme(legend.title = element_blank())
+```
+
+### Zeitreihenanalyse Transaktionsmenge
+```{r}
+# Monatliche Durchschnittsnachfrage nehmen
+transaktionen_monatlich <- materials %>% group_by(Monat=as.yearmon(EinAusDat)) %>% count() %>% filter(Monat < as.yearmon("2023-06"))
+
+ts <- ts(transaktionen_monatlich$n, frequency = 12)
+plot.ts(ts)
+
+# Create model
+model <- ets(ts, model="ZZZ")
+print(model)
+
+fcast <- forecast(model, 12)
+
+# DataFrame für Originaldaten
+df_orig = data.frame(
+  period = seq(1, length(fcast$x), 1), 
+  bestand = as.numeric(fcast$x), 
+  group = rep("Original", length(fcast$x)))
+
+# DataFrame für Forecast erstellen (sowohl Vorhersage für Zeitreihenwerte als auch ein Jahr in die Zukunft)
+df_fcast = data.frame(
+  period = seq(1, length(fcast$fitted)+length(fcast$mean), 1), 
+  bestand = c(as.numeric(fcast$fitted), as.numeric(fcast$mean)), 
+  group = rep("Modell", length(fcast$fitted)+length(fcast$mean)))
+
+# In ein DataFrame zusammenführen
+df = rbind(df_orig, df_fcast)
+
+# Plot
+ggplot(df, aes(x = period, y = bestand, colour = group)) +
+  geom_line()+
+  xlab("Periode") +
+  ylab("Transaktionen") +
+  theme(legend.title = element_blank())
+```
+
+## Reichweite
+### Zeit bis zum ersten Pick
+```{r}
+# Reichweite bis 1. Pick = Zeit zwischen Bestelleingang (geliefertAm) und erster Transaktion (BereitDat, PjPhaseDat)
+materials_b_1st_pick <- materials_b %>%
+  # Nach Datum sortieren
+  arrange(EinAusDat) %>%
+  # Nach Material gruppieren
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  mutate(bis_erster_pick = if_else(lead(EinAutDatTyp) %in% c("BereitDat", "PjPhaseDat"), as.numeric(difftime(lead(EinAusDat), EinAusDat, units="days")), NA)) %>%
+  filter(EinAutDatTyp == "geliefertAm")
+  # summarize(mean_bis_pick=mean(bis_erster_pick, na.rm=TRUE)) # NA remove for last entry
+
+# Histogramm
+ggplot(materials_b_1st_pick, aes(x=bis_erster_pick)) +
+    geom_histogram(color="black", fill="white") +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0)) +
+    ggtitle("Verteilung der Zeit von Bestelleingang bis zum ersten Pick [in Tagen]")
+
+# Zeit zwischen Picks
+# Mit WBZ gegenüberstellen
+```
+
+### Reichweite bis nächste Bestellung
+```{r}
+# = Zeit zwischen Bestelleingang und nächster Bestellung (BstDat -> wenn wir bestellen, nicht Eingang)
+materials_b_n_bestellung <- materials_b %>%
+  arrange(EinAusDat, ArtikelNr) %>%
+  filter(EinAutDatTyp == "geliefertAm") %>%
+  group_by(ArtikelNr, `Artikel-Bezeichnung`) %>%
+  mutate(bis_n_bestl = as.numeric(difftime(lead(BstDat), EinAusDat, units="days")))
+  # summarize(mean_bis_bestl=mean(bis_n_bestl, na.rm=TRUE)) # NA remove for last entry
+
+# Histogramm
+ggplot(materials_b_n_bestellung, aes(x=bis_n_bestl)) +
+    geom_histogram(color="black", fill="white") +
+    facet_wrap(~`Artikel-Bezeichnung`, scales = 'free') +
+    # Text linksbündig
+    theme(strip.text.x = element_text(hjust=0.0)) +
+    ggtitle("Verteilung der Reichweite von Bestelleingang bis zur nächsten Bestellung [in Tagen]")
 ```
