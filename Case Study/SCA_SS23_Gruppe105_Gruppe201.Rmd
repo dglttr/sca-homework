@@ -127,18 +127,6 @@ ggplot(transaktion_klassiert, aes(y=reorder(klasse, n, sum), x=n, fill=klasse)) 
 
 ```
 
-## Plot: Menge über Zeit
-```{r}
-materials_b %>% 
-  ggplot() +
-  geom_line(aes(x=EinAusDat,y=Menge,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
-                ))+
-  xlab('Datum')+
-  ggtitle('Menge über die Zeit')+
-  theme(legend.title = element_text(size = 5), 
-               legend.text = element_text(size = 5))
-```
-
 ## Materialien
 ### Häufigkeit Materialien
 ```{r}
@@ -247,6 +235,18 @@ materials %>% group_by(PjInfo, klasse) %>% count() %>% arrange(desc(n)) %>% muta
                              "Anderes" = "grey"))
 ```
 ## Menge
+### Plot: Menge über Zeit
+```{r}
+materials_b %>% 
+  ggplot() +
+  geom_line(aes(x=EinAusDat,y=Menge,group=`Artikel-Bezeichnung`, color=`Artikel-Bezeichnung`
+                ))+
+  xlab('Datum')+
+  ggtitle('Menge über die Zeit')+
+  theme(legend.title = element_text(size = 5), 
+               legend.text = element_text(size = 5))
+```
+
 ### Plot: Mengen nach klasse und Material
 ```{r}
 materials_b %>% filter(Menge < 0) %>% group_by(`Artikel-Bezeichnung`, EinAusDat, klasse) %>% summarize(Nachfrage=sum(-Menge)) %>%
