@@ -295,12 +295,12 @@ picks %>%
   theme(legend.position = "none")
 ```
 
-## Pickgröße vs. Bestell-Losgröße
+## Abruflosgrößen vs. Bestell-Losgröße
 ```{r}
 picks %>% filter(ArtikelNr == 29523, ) %>% 
   ggplot() +
-  geom_line(aes(x=EinAusDat,y=picks, col= 'red')) +
-  geom_line(aes(x=EinAusDat,y=lot_size, col='green'))
+  geom_line(aes(x=EinAusDat,y=picks, col= 'Abruflosgrößen')) +
+  geom_line(aes(x=EinAusDat,y=lot_size, col='Bestell-Losgröße'))
 ```
 
 ```{r}
@@ -309,7 +309,7 @@ picks %>% filter(ArtikelNr == 26535, ) %>%
   geom_line(aes(x=EinAusDat,y=lot_size))
 ```
 
-## Picks vs. Losgröße nach Artikel
+## Abruflosgrößen vs. Bestell-Losgröße nach Artikel
 ```{r}
 picks %>% filter(lot_size != 0) %>% group_by(`Artikel-Bezeichnung`) %>% mutate(med_lot = median(lot_size)) %>% 
   ggplot(aes(x=lot_size)) +
@@ -333,50 +333,67 @@ picks %>% filter(picks != 0) %>%
   ggtitle("Verteilung der Pick-Losgrößen nach Artikel")
 ```
 
-
-
 ```{r}
 picks %>% filter(ArtikelNr == 29523,lot_size !=0 ) %>% 
   ggplot(aes(x=lot_size)) +
   geom_histogram(binwidth=.1, colour="black", fill="white")+
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)+
+  labs(x="Losgröße", y="Anzahl Bestellungen")+
+  xlim(900, 950)
 ```
 
 ```{r}
 picks %>% filter(ArtikelNr == 26535,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)+
+  labs(x="Losgröße", y="Anzahl Bestellungen")
+
 ```
 ```{r}
 picks %>% filter(ArtikelNr == 21866,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)+
+  labs(x="Losgröße", y="Anzahl Bestellungen")
 ```
 ```{r}
 picks %>% filter(ArtikelNr == 2628,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)+
+  labs(x="Losgröße", y="Anzahl Bestellungen")
 ```
 ```{r}
 picks %>% filter(ArtikelNr == 26385,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)+
+  labs(x="Losgröße", y="Anzahl Bestellungen")
 ```
 ```{r}
 picks %>% filter(ArtikelNr == 6203,lot_size !=0  ) %>%
   ggplot(aes(x=lot_size)) + 
   geom_histogram(binwidth=1,colour="black", fill="white") +
-  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)
+  geom_vline(aes(xintercept=median(lot_size, na.rm=T)), color="red", linetype="dashed", size=1)+
+  labs(x="Losgröße", y="Anzahl Bestellungen")
 ```
 # Median der Bestell-Losgrößen nach Artikel
 ```{r}
 picks %>% filter(lot_size !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_lot = median(lot_size))
 ```
-# Verteilung der Picks nach Artikel
+
+#Verlauf der Abruflosgrößen nach Artikel
+```{r}
+picks %>% filter(picks !=0) %>% 
+  ggplot()+
+  geom_line(aes(x= EinAusDat, y = picks, color= `Artikel-Bezeichnung`))+
+  theme(legend.position = 'none')+
+   facet_wrap(~`Artikel-Bezeichnung`, nrow=2, scales="free") 
+
+```
+
+# Verteilung der Abruflosgrößen nach Artikel
 ```{r}
 picks %>% filter(picks !=0) %>% group_by(`Artikel-Bezeichnung`)%>% mutate(med_pick = median(picks)) %>% 
   ggplot(aes(x=picks))+ 
@@ -393,37 +410,58 @@ picks %>% filter(picks !=0) %>% group_by(`Artikel-Bezeichnung`)%>% mutate(med_pi
 picks %>% filter(picks !=0) %>%  group_by(`Artikel-Bezeichnung`) %>% summarise(median_pick = median(picks), avg_picks= mean(picks))
 ```
 
+## Zeitliche Verteilung der Warenein- und ausgänge
+```{r}
+picks1 <- picks %>%  mutate(picks = replace(picks, picks==0, NA), lot_size = replace(lot_size, lot_size==0, NA))
+```
+
+```{r}
+picks_diff <- picks1 %>% group_by(`Artikel-Bezeichnung`,is_pick = Menge<0) %>% summarise(days_diff = time_length(interval(lag(EinAusDat), EinAusDat), unit="days")) %>%  mutate(type = if_else(is_pick, 'Warenausgang', 'Wareneinnahmen'))
+
+picks_diff %>% ggplot(aes(x = days_diff, color = type)) +
+ geom_boxplot() +
+  
+ facet_wrap(~`Artikel-Bezeichnung`, nrow=2, scales="free_x") 
+```
+Wir sehen dass sich Bestellverhalten zwischen Materialien stark unterscheiden, so werden eienige Materialien in deutlich kurzeren Abständen wieder bestellt, wie bei den PVC-Röhren. 
+
+```{r}
+picks_diff %>%  group_by(`Artikel-Bezeichnung`,is_pick) %>% drop_na() %>%  summarise(avg_days = mean(days_diff), max_days = max(days_diff), min_days = min(days_diff), sd = sd(days_diff) ) 
+```
+
 ```{r}
 # Berechnen der kumulierten Nachfrage nach Wochen
 weekly_picks <- picks %>%
-  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  group_by(`Artikel-Bezeichnung`, week = floor_date(EinAusDat, 'week')) %>%
   summarise(picks_per_week= sum(picks)) 
 ```
 
 ```{r}
 # Berechnen der Durchschnittsnachfrage nach Wochen
 weekly_avg_picks <- picks %>%
-  group_by(ArtikelNr, week = floor_date(EinAusDat, 'week')) %>%
+  group_by(`Artikel-Bezeichnung`, week = floor_date(EinAusDat, 'week')) %>%
   summarise(avgpicks_per_week= mean(picks)) 
 ```
 
 
 ```{r}
 # Berechnen der Bestell-Losgröße nach Wochen
-weekly_meanpick <- weekly_picks %>%  group_by(ArtikelNr) %>%
+weekly_meanpick <- weekly_picks %>%  group_by(`Artikel-Bezeichnung`) %>%
   mutate(mean_pick = mean(picks_per_week))
 ```
 
 ```{r}
 weekly_picks %>% 
   ggplot() +
-  geom_line(aes(x=week ,y=picks_per_week, group= ArtikelNr, col= ArtikelNr))
+  geom_line(aes(x=week ,y=picks_per_week, group=`Artikel-Bezeichnung`, col= `Artikel-Bezeichnung`))+
+  xlab('Datum')+
+  ylab('Abruflosgröße')
 ```
 ```{r}
 # Berechnen der Durchschnittlichen Bestell-Losgröße nach Wochen
 weekly_avg_picks %>% 
   ggplot() +
-  geom_line(aes(x=week ,y=avgpicks_per_week, group= ArtikelNr, col= ArtikelNr))
+  geom_line(aes(x=week ,y=avgpicks_per_week, group=`Artikel-Bezeichnung`   , col=`Artikel-Bezeichnung`   ))
 ```
 
 # Zeitreihenanalyse
@@ -940,6 +978,7 @@ bestellpolitik
 ## Bestandverlauf mit neuer Bestellpolitik
 ```{r}
 alle_artikel <- data.frame()
+materials_b <- materials_b %>% select(-Baseline)
 
 for (mat in materials_group_b) {
 
@@ -1040,7 +1079,13 @@ for (mat in materials_group_b) {
 
 # Gesamtplot
 ggplot(data=alle_artikel) + geom_line(aes(x=EinAusDat,y=cum_sum, group=Bestellpolitik, color=Bestellpolitik))+facet_wrap(~Artikel, nrow=3, scale="free_y")+ylab("Bestand")
+
+
 ```
+
+
+
+
 ## Quantifizierung der Einsparungen
 ```{r}
 kosten <- data.frame(Artikel=materials_group_b,
