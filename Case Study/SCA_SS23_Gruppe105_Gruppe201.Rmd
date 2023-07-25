@@ -407,8 +407,8 @@ ggplot(data=materials_b, aes(x=EinAusDat, y=Bestand)) +
     theme(legend.position = "none")
 
 ```
-
-### Alt
+## Bestand
+### Plot: Menge über Zeit
 ```{r}
 mat_verlauf <- materials_b %>%
   filter(EinAutDatTyp == "geliefertAm" | EinAutDatTyp == "BereitDat" | EinAutDatTyp == "PjPhaseDat") %>%
