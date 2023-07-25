@@ -424,7 +424,8 @@ mat_verlauf %>%
       theme(legend.position = "none") +
       ggtitle("EinAutDatTyp = geliefertAm, BereitDat, PjPhaseDat")
 ```
-# Überprüfung des Bestands auf Integrität
+
+## Überprüfung des Bestands auf Integrität
 ```{r}
 b <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>%  filter(klasse=='Handel') %>% mutate(bestand_lagged = Menge + Bestand ) %>% mutate(bestand_aprox = lag(bestand_lagged)) 
 b %>% summarise(falscher_lagerbestand_prozent = sum(bestand_lagged == bestand_aprox, na.rm = TRUE)/n(), falscher_lagerbestand_prozent_cum_sum = sum(cum_sum == bestand_aprox, na.rm = TRUE)/n())
@@ -435,7 +436,7 @@ b %>% ggplot(aes(x =EinAusDat)) +
 ```
 Wir können sehen dass an gewissen Punkten Lagerbestände falsch angegeben sind. Dies kann man dadurch belegen, dass bei Warenausgang oder Wareneingang, der Bestand in der nächste Transaktion dem vorherigen um die Veränderung entsprechen muss.
 
-# Abrufmenge bis zum nächsten Bestellpunkt
+## Abrufmenge bis zum nächsten Bestellpunkt
 ```{r}
 # Letzter Abruf vor jeder Bestellung mit as_of_join bestimmt 
 ordered_quantity <- mat_verlauf %>% filter(EinAutDatTyp =='geliefertAm')
@@ -446,7 +447,8 @@ ordered_quantity %>%
   drop_na() %>%
   ggplot()+ geom_histogram(aes(x=cum_sum, fill ="Cumsum")) + geom_histogram(aes(x= Bestand, fill ="Bestand")) + facet_wrap(~`Artikel-Bezeichnung`, nrow=3, scales="free")
 ```
-# Summe der Picks zwischen zwei Bestellzeitpunkten
+
+## Summe der Picks zwischen zwei Bestellzeitpunkten
 ```{r}
 picks_between_order <- mat_verlauf %>% group_by(`Artikel-Bezeichnung`) %>% arrange(EinAusDat, .by_group = TRUE) %>%  fill(BstDat, .direction = "up",) %>%  filter(Menge<0) %>% group_by(`Artikel-Bezeichnung`, BstDat) %>% summarise(pick_quantity_between_orders = sum(abs(Menge)))
 
@@ -457,7 +459,7 @@ ggplot() + geom_line(aes(x= BstDat, y = pick_quantity_between_orders ,color="Pic
 ```
 Der Plot stellt die Summe der Picks bevor einer Bestellung in Vergleich zur bestellten Menge dar. Man sieht das die Summe der Picks vor der Bestellung oft weit über der bestellten Menge liegen, das lässt auf größere Infeziente Lagerhaltung schliesen.
 
-# Kummulierte Summe der Abrufe zwischen Bestellungen als Histogram
+## Kummulierte Summe der Abrufe zwischen Bestellungen als Histogram
 ```{r}
 picks_cum_sum_between_order <- mat_verlauf %>% select(ArtikelNr,`Artikel-Bezeichnung`,EinAusDat, BstDat,Menge, ) %>% group_by(`Artikel-Bezeichnung`) %>% arrange(EinAusDat, .by_group = TRUE) %>%  fill(BstDat, .direction = "up",) %>%  filter(Menge<0) %>% group_by(`Artikel-Bezeichnung`, BstDat) %>% mutate(pick_cum_sum_between_orders = cumsum(abs(Menge)))
 
